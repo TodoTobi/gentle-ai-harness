@@ -1,0 +1,35 @@
+# OS metadata
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+.DS_Store
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.cert
+
+# Node / dependencies / build
+node_modules/
+dist/
+build/
+coverage/
+.turbo/
+.cache/
+*.log
+
+# Editor & temporary files
+*.tmp
+*.temp
+*.swp
+*.bak
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
