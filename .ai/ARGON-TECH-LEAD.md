@@ -70,7 +70,7 @@ Usá siempre esta estructura exacta para que el Router de `AGENTS.md` en Antigra
 
 ## 1. RAMA Y CONTEXT SCOPE (CERCO DE SEGURIDAD ESTRICTO)
 - **Rama Git:** `[feature/nombre-feature | bugfix/cerco-nombre-bug]`
-- **BASE_COMMIT_SHA:** `[hash HEAD actual extraído con git rev-parse --short HEAD]` (Flash verifica que el repo no haya derivado)
+- **BASE_COMMIT_SHA:** `[hash HEAD completo extraído con git rev-parse HEAD]` (Flash verifica que el repo no haya derivado)
 - **Perfil de Proyecto:** `[production | mvp]` (declarado en `@init`)
 - **Circuit Breaker Threshold:** `[2 | 3 | 4]` — número máximo de fallos consecutivos antes de detenerse. Usar `3` o `4` solo en refactors de código legacy.
 - **Consulta Engram:** consultar nodo `[nombre-del-nodo]` antes de iniciar.
@@ -109,6 +109,14 @@ En `[ruta/archivo1.ts]`, implementar la lógica siguiendo estas reglas estrictas
 2. `[Instrucción técnica directa 2]`
 3. Prohibido instalar librerías nuevas o refactorizar funciones vecinas.
 
+### Paso 2.5: Fase Refactor (Opcional — Invarianza y Limpieza sin nuevo comportamiento)
+- Si y solo si los tests del Paso 2 están en VERDE:
+  1. Eliminar duplicación o complejidad ciclomática introducida durante la Fase Verde.
+  2. Modificar estrictamente archivos dentro de `WRITE_SCOPE`.
+  3. Prohibido alterar contratos públicos o agregar nueva funcionalidad.
+  4. Volver a correr los tests para asegurar que siguen en verde.
+- Si no hay deuda técnica inmediata que justificar, declarar `REFACTOR_SKIPPED` y avanzar al Paso 3.
+
 ### Paso 3: Validación Empírica, Circuit Breaker y Engram
 1. Volver a correr `[comando exacto de test]` hasta que dé VERDE.
 2. Ejecutar verificación global de tipos: `npx tsc --noEmit`.
@@ -116,16 +124,17 @@ En `[ruta/archivo1.ts]`, implementar la lógica siguiendo estas reglas estrictas
 4. **Smoke test obligatorio (ceguera lógica):** correr el suite completo del proyecto (`[npm test | npx vitest run | npx jest --watchAll=false]`) para detectar regresiones de lógica fuera del cerco que `tsc` no captura. Si falla algún test ajeno al cerco, reportarlo al usuario antes de cerrar el paquete. No intentar arreglarlo sin nuevo Paquete Quirófano.
 5. **Persistencia en Engram:** una vez todo en verde, guardar en Engram bajo el nodo `[nombre-del-nodo]` este resumen:
    > "[Escribir acá el resumen de 2 a 3 líneas de la decisión técnica implementada]"
-   > **Commit SHA de referencia:** `[resultado de git rev-parse --short HEAD]` — Engram debe registrar este hash para que futuras sesiones puedan verificar si la memoria sigue siendo válida respecto al código actual.
+   > **Commit SHA de referencia:** `[resultado de git rev-parse HEAD]` (40 caracteres completos). Si Engram está offline, marcar como `PENDING_SYNC` sin bloquear el cierre.
 
 ### Paso 4: Reporte Estructurado de Ejecución (Observabilidad)
-Al finalizar la tarea (tanto por éxito como si se dispara el Circuit Breaker), emitir este bloque YAML para auditoría:
+Al finalizar la tarea (tanto por éxito como si se dispara el Circuit Breaker o rechazo de expansión), emitir este bloque YAML para auditoría:
 
 ```yaml
 execution_report:
   task_title: "[Título de la tarea / Paso X de Y]"
-  status: "[SUCCESS | CIRCUIT_BREAKER_HALTED | EXPANSION_REQUESTED | PACKAGE_REJECTED]"
-  rejection_reason: "[Completar solo si status es PACKAGE_REJECTED]"
+  status: "[SUCCESS | CIRCUIT_BREAKER_HALTED | EXPANSION_REQUESTED | EXPANSION_REJECTED | PACKAGE_REJECTED]"
+  rejection_reason: "[Completar solo si status es PACKAGE_REJECTED o EXPANSION_REJECTED]"
+  refactor_phase: "[APPLIED | REFACTOR_SKIPPED]"
   files_modified:
     - "[ruta/archivo1.ts]"
   tests:
@@ -134,8 +143,8 @@ execution_report:
     smoke_suite: "[PASS | FAIL | SKIPPED]"
   typecheck: "[PASS | FAIL]"
   circuit_breaker_attempts: [N]
-  commit_sha: "[resultado de git rev-parse --short HEAD]"
-  engram_synced: "[true | false | offline]"
+  commit_sha: "[resultado de git rev-parse HEAD]"
+  engram_synced: "[true | false | PENDING_SYNC]"
 ```
 ````
 

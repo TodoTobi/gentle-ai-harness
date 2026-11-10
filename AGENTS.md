@@ -22,7 +22,12 @@
   - `WRITE_SCOPE`: Únicos archivos donde tenés autorización de lectura y modificación (declarados en `ARCHIVOS DENTRO DEL ALCANCE` del paquete).
   - `READ_SCOPE`: Archivos de contratos, DTOs e interfaces que podés consultar pero jamás editar.
   - `VALIDATION_SCOPE`: Comandos globales de verificación (`tsc --noEmit`, tests de regresión) que analizan el proyecto completo sin otorgar permisos de lectura libre ni escritura fuera del cerco.
-- **Dependencias Descubiertas (`DISCOVERED_DEPENDENCY — NOT AUTHORIZED`):** Si mediante búsquedas quirúrgicas (`rg`/`grep`) descubrís un archivo fuera del cerco necesario para la solución, **no lo abras ni lo modifiques**. Detenete y reportá: `[DISCOVERED_DEPENDENCY — NOT AUTHORIZED: ruta/archivo.ts]`. Solo podés incorporarlo si el usuario autoriza la ampliación. Si el archivo figuraba explícitamente en `ARCHIVOS PROHIBIDOS` o el usuario no autoriza, el Circuit Breaker frena de inmediato.
+- **Dependencias Descubiertas (`DISCOVERED_DEPENDENCY — NOT AUTHORIZED`):** Si mediante búsquedas quirúrgicas (`rg`/`grep`) descubrís un archivo fuera del cerco con una dependencia real de ejecución o tipos (`import`, `require`, inyección de dependencias — excluyendo comentarios, TODOs o menciones documentales):
+  - **No lo abras ni lo modifiques.**
+  - Detenete y reportá: `[DISCOVERED_DEPENDENCY — NOT AUTHORIZED: ruta/archivo.ts]`.
+  - Si el usuario **autoriza**, se incorpora a `READ_SCOPE` o `WRITE_SCOPE` según corresponda.
+  - Si el usuario **rechaza** la ampliación, la tarea termina con estado de gobernanza `EXPANSION_REJECTED` (no computa como fallo técnico del Circuit Breaker).
+  - Si el archivo figuraba explícitamente en `ARCHIVOS PROHIBIDOS`, el Circuit Breaker frena de inmediato.
 - **Búsqueda Quirúrgica:** Para rastrear referencias cruzadas (Fase 3), usá comandos precisos (`rg`, `grep -rn`) buscando nombres de funciones o tipos específicos. Prohibido leer archivos completos solo para explorar.
 - **Circuit Breaker (Freno Anti-Bucle):** Si tras implementar un cambio en Fase Verde (Green), un test o `tsc --noEmit` falla **N veces consecutivas** (N = `circuit_breaker_threshold` del Paquete, default `2`), DETENÉ la ejecución inmediatamente, mostrá el log exacto del error y esperá instrucciones humanas. Prohibido adivinar o probar parches por fuerza bruta. **Importante:** El fallo inicial esperado en la Fase Roja (Red Phase) de TDD NO contabiliza como fallo del Circuit Breaker; solo cuentan los fallos producidos durante la implementación o validación de tipos.
 - **Principios de Código:** Aplicá estrictamente KISS, YAGNI y TDD (Red -> Green -> Refactor). Cero explicaciones largas al finalizar; reportá estado de tests y cambios en viñetas de 1 línea.
@@ -55,13 +60,14 @@ El perfil se detecta automáticamente en `@init` y condiciona las reglas de capa
 Cuando el usuario te entregue un **Paquete Quirófano / Paquete de Ejecución (Harness)** diseñado por el Tech Lead (Gemini 4 Argon):
 - **Ramas Aisladas:** Prohibido trabajar en `main`. Creá siempre `feature/[nombre]` o `bugfix/cerco-[nombre]`.
 - **Orden TDD Inquebrantable:**
-  1. **Fase Roja (Red):** Escribí o actualizá primero el test indicado en el paquete, ejecutalo y verificá que falle.
+  1. **Fase Roja (Red):** Escribí o actualizá primero el test indicado en el paquete, ejecutalo y verificá que falle por aserción funcional (prohibido aceptar falsos rojos por importación rota o compilación).
   2. **Fase Verde (Green):** Implementá el código mínimo indispensable dentro del cerco para pasar el test.
+  3. **Fase Refactor (Opcional):** Si tras pasar los tests se introdujo duplicación o complejidad innecesaria, refactorizá dentro de `WRITE_SCOPE` sin agregar comportamiento nuevo y volvé a correr tests. Si no hay deuda inmediata, declarar `REFACTOR_SKIPPED` y avanzar.
 - **Retrocompatibilidad y Migración de Contratos:** Prohibido alterar firmas de funciones públicas, endpoints o tipos compartidos sin aplicar parámetros opcionales, Options Pattern o Adapter Pattern. Si una rotura de contrato es estrictamente necesaria por cambio de requerimiento, debe ser declarada explícitamente por el Arquitecto como `MIGRACIÓN CONTRACTUAL`, con adaptación de consumidores, suite de compatibilidad y aprobación humana obligatoria.
 - **Validación Empírica Obligatoria:** Ninguna tarea está terminada hasta que pasen:
   1. Los tests unitarios/integración del cerco.
   2. El verificador estático de tipos global (`npx tsc --noEmit`).
-  3. La actualización del nodo correspondiente en **Engram**.
+  3. La actualización del nodo correspondiente en **Engram** (si Engram está offline, la tarea de código se cierra como exitosa y la sincronización se marca como `PENDING_SYNC` sin bloquear la entrega).
 
 ---
 

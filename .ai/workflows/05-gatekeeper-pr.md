@@ -1,18 +1,35 @@
 # ORDEN DE AUDITORÍA FINAL PRE-MERGE (GATEKEEPER)
 
-Antes de cerrar esta rama, ejecutá una auditoría determinista sobre los cambios realizados usando exclusivamente `git diff main...HEAD` y `git status`:
+Antes de autorizar el cierre de esta rama o la creación del Pull Request, ejecutá una auditoría determinista e integral sobre todo el árbol de trabajo.
 
-1. **Verificación del Cerco de Seguridad:** Listá todos los archivos modificados y confirmá que ninguno pertenece a las zonas prohibidas ni quedaron archivos basura/temporales sin trackear.
-2. **Checklist de Seguridad y Limpieza:**
-   - ¿Se filtró algún `console.log` de depuración, comentario muerto, credencial hardcodeada o dato sensible (PII)?
-   - ¿Se alteró `package.json` sin autorización?
-3. **Ejecución Final:** Corré `npx tsc --noEmit` y la suite completa de tests de regresión del proyecto.
-4. **Entregable (Pull Request + Memoria Engram):**
-   - Si los puntos 1, 2 y 3 pasan con 0 errores, actualizá el nodo correspondiente en **Engram** con las decisiones arquitectónicas de esta rama (máximo 5 líneas).
-   - Imprimime un bloque Markdown con el título del Commit (formato Conventional Commits), la descripción del Pull Request y esta **Matriz de Control de Calidad** verificada:
-     - [x] Funcionalidad / Escenario BDD cumplido.
-     - [x] Cerco de Seguridad respetado (0 archivos fuera de alcance).
-     - [x] Blindaje Anti-Regresiones (Contratos externos intactos).
-     - [x] Pruebas de Regresión Globales al 100% (0 fallos).
-     - [x] Validación de Tipos (`tsc --noEmit`) limpia.
-     - [x] Minimal Fix / Implementation sin deuda técnica.
+### 1. Auditoría Integral del Estado de Git (Three-Way Diff Inspection)
+Ejecutá los siguientes tres comandos para no dejar cambios huérfanos o archivos no trackeados fuera del análisis:
+1. `git status --porcelain`: inspeccioná cambios pendientes y archivos sin trackear (`??`). Si existen archivos residuales, temporales o fuera de `WRITE_SCOPE`, **DETENÉ EL GATEKEEPER** de inmediato:
+   > `[GATEKEEPER BLOCKED] Se detectaron archivos no autorizados o residuales en el árbol de trabajo: [listar]`
+2. `git diff --cached`: auditá los cambios preparados para commit.
+3. `git diff [BASE_COMMIT_SHA] HEAD` (o `git diff main...HEAD` si no se dispone de SHA): auditá el diff total acumulado en la rama contra el commit base del paquete.
+
+### 2. Checklist de Seguridad, Contratos y Limpieza:
+- **Respeto Estricto de Scopes:** ¿Todos los archivos modificados pertenecen a `WRITE_SCOPE`? Prohibido autorizar PRs con cambios accidentales en archivos fuera de cerco.
+- **Limpieza de Código:** ¿Se eliminaron `console.log` de depuración, mocks temporales, credenciales hardcodeadas, secretos o datos sensibles (PII)?
+- **Invarianza de Dependencias:** ¿`package.json` o archivos lock permanecen intactos a menos que haya habido autorización humana expresa?
+- **Separación de Capas:** ¿Se mantuvo el desacoplamiento arquitectónico según el perfil (`production` / `mvp`)?
+
+### 3. Validación Empírica Final:
+- Ejecutar verificación estática de tipos: `npx tsc --noEmit` (debe dar 0 errores).
+- Ejecutar suite completa de tests de regresión: `npm test` o runner equivalente del proyecto. Confirmar que no hay regresiones nuevas respecto al baseline.
+
+### 4. Entregable (Pull Request + Memoria Engram):
+- **Sincronización en Engram:** Guardá en Engram el resumen de la decisión técnica vinculada al SHA completo de cierre (`git rev-parse HEAD`). Si Engram está offline, marcá el PR con `[ENGRAM: PENDING_SYNC]`.
+- Imprimí un bloque Markdown listo para el PR con título Conventional Commits, descripción concisa y la matriz de control de calidad:
+
+```markdown
+## Matriz de Control de Calidad (Gatekeeper)
+- [x] Funcionalidad / Escenario BDD cumplido y probado.
+- [x] Cerco de Seguridad respetado (100% cambios dentro de WRITE_SCOPE).
+- [x] Árbol de Git limpio (verificado con `git status --porcelain`, 0 archivos residuales).
+- [x] Blindaje de Contratos y Retrocompatibilidad verificados.
+- [x] Pruebas de Regresión Globales al 100% (cero fallos nuevos vs baseline).
+- [x] Verificación de Tipos estricta (0 errores en `tsc --noEmit`).
+- [x] Sincronización en Engram completada o documentada.
+```

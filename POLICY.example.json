@@ -1,38 +1,48 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Gentle AI Harness — Runtime Security Policy Contract",
-  "version": "1.0.0",
-  "description": "Especificación de referencia para motores de ejecución (Policy Engine) y sandboxes de agentes. Define límites duros de acceso al sistema de archivos, comandos y aprobaciones humanas.",
+  "version": "2.0.0",
+  "description": "Especificación declarativa de políticas de ejecución, límites de alcance y gobernanza para agentes. Define la jerarquía de precedencia y reglas adaptables a múltiples stacks tecnológicos.",
+  "precedence_hierarchy": [
+    "1. ABSOLUTE_FORBIDDEN: Prohibiciones duras de seguridad innegociables (secretos, .env, .git, tokens). Nunca sobreescribibles.",
+    "2. HUMAN_EXPLICIT_APPROVAL: Decisiones y autorizaciones otorgadas expresamente por el desarrollador en tiempo real.",
+    "3. SURGICAL_PACKET_CONTRACT: Alcance y contratos definidos en el Paquete Quirófano por el Staff Architect para la tarea actual.",
+    "4. PROJECT_DEFAULT_POLICY: Valores y límites por defecto declarados en este archivo de configuración.",
+    "5. AGENT_HEURISTICS: Sugerencias o inferencias del agente ejecutor (mínima autoridad)."
+  ],
   "policy": {
     "profile": "production",
     "architecture_pattern": "hexagonal_or_layered",
     "scopes": {
-      "modification_allowlist": [
-        "src/**/*.ts",
-        "src/**/*.tsx",
-        "tests/**/*.ts"
-      ],
-      "readonly_allowlist": [
-        "src/types/**/*.ts",
-        "src/interfaces/**/*.ts",
-        "package.json",
-        "tsconfig.json"
-      ],
+      "modification_allowlist_examples": {
+        "typescript": ["src/**/*.ts", "src/**/*.tsx", "tests/**/*.ts"],
+        "python": ["src/**/*.py", "app/**/*.py", "tests/**/*.py"],
+        "go": ["cmd/**/*.go", "internal/**/*.go", "pkg/**/*.go", "**/*_test.go"],
+        "rust": ["src/**/*.rs", "tests/**/*.rs"]
+      },
+      "readonly_allowlist_examples": {
+        "typescript": ["src/types/**/*.ts", "package.json", "tsconfig.json"],
+        "python": ["pyproject.toml", "requirements.txt", "setup.cfg"],
+        "go": ["go.mod", "go.sum"],
+        "rust": ["Cargo.toml", "Cargo.lock"]
+      },
       "forbidden_paths": [
         ".env*",
         "**/*secret*",
         "**/*credential*",
         ".git/**",
         "node_modules/**",
+        "__pycache__/**",
+        "target/**",
         "dist/**",
         "build/**"
       ]
     },
     "execution_limits": {
-      "max_files_modified_per_packet": 3,
-      "max_diff_lines": 300,
+      "default_max_files_modified_per_packet": 3,
+      "default_max_diff_lines": 300,
+      "allow_packet_override": true,
       "circuit_breaker": {
-        "threshold": 2,
+        "default_threshold": 2,
         "legacy_refactor_threshold": 4,
         "exclude_expected_red_phase": true,
         "halt_on_consecutive_failures": true
@@ -40,39 +50,53 @@
     },
     "human_approval_required": [
       "database_destructive_migration",
-      "package_json_dependency_addition",
+      "package_dependency_addition",
       "env_file_modification",
       "direct_commit_to_main",
       "scope_expansion_beyond_packet"
     ],
-    "allowed_commands": {
-      "test_runners": [
-        "npm test",
-        "npx vitest run",
-        "npx jest --watchAll=false"
-      ],
-      "typecheck": [
-        "npx tsc --noEmit"
-      ],
-      "search_tools": [
-        "rg",
-        "grep -rn"
-      ],
-      "static_analysis": [
-        "npx eslint",
-        "npm audit",
-        "semgrep"
-      ]
+    "allowed_commands_by_stack": {
+      "typescript": {
+        "test_runners": ["npm test", "npx vitest run", "npx jest --watchAll=false"],
+        "typecheck": ["npx tsc --noEmit"],
+        "lint_and_security": ["npx eslint", "npm audit", "semgrep"]
+      },
+      "python": {
+        "test_runners": ["pytest", "python -m unittest"],
+        "typecheck": ["mypy", "pyright"],
+        "lint_and_security": ["ruff check", "flake8", "bandit", "pip-audit"]
+      },
+      "go": {
+        "test_runners": ["go test ./..."],
+        "typecheck": ["go vet ./..."],
+        "lint_and_security": ["golangci-lint run", "govulncheck ./..."]
+      },
+      "rust": {
+        "test_runners": ["cargo test"],
+        "typecheck": ["cargo check"],
+        "lint_and_security": ["cargo clippy", "cargo audit"]
+      },
+      "universal": {
+        "search_tools": ["rg", "grep -rn"],
+        "version_control": ["git status --porcelain", "git diff", "git rev-parse HEAD"]
+      }
     },
     "memory_engine": {
       "provider": "engram_mcp",
-      "enforce_commit_sha": true,
-      "freshness_validation_on_init": true,
-      "fallback_on_offline": "degraded_mode"
+      "enforce_full_commit_sha": true,
+      "freshness_states": ["FRESH", "STALE", "UNKNOWN"],
+      "fallback_on_offline": "degraded_mode_pending_sync"
     },
     "observability": {
       "require_execution_report": true,
-      "format": "yaml"
+      "format": "yaml",
+      "valid_termination_states": [
+        "SUCCESS",
+        "CIRCUIT_BREAKER_HALTED",
+        "EXPANSION_REQUESTED",
+        "EXPANSION_REJECTED",
+        "PACKAGE_REJECTED"
+      ]
     }
   }
 }
