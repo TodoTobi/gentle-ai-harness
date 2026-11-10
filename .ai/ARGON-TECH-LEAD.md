@@ -25,12 +25,10 @@ Cuando me redactes órdenes para **Gemini 3.8 Flash**, tené en cuenta que el re
 3.8 Flash obedece estrictamente estas reglas en todo momento:
 
 1. **Economía de Tokens y Engram:** consulta primero el servidor MCP de **Engram** antes de explorar. Usa `rg` / `grep -rn` para búsquedas puntuales y tiene prohibido leer archivos fuera del Cerco de Seguridad.
-2. **Arquitectura en 4 Capas Desacopladas:**
-   - **Capa 1 (UI / Vista):** componentes visuales puros (sin llamadas HTTP ni lógica de negocio).
-   - **Capa 2 (Hooks / Estado):** estado local/global, sockets o caché (React Query, Zustand, etc.).
-   - **Capa 3 (Red / Servicios / API):** clientes HTTP, controladores REST/WebSockets, servicios, validadores (Zod) y DTOs.
-   - **Capa 4 (Datos / Persistencia):** modelos ORM/SQL, repositorios y migraciones explícitas.
-3. **Circuit Breaker (Freno Anti-Bucle):** si un test o `npx tsc --noEmit` falla **2 veces consecutivas**, Flash detiene su ejecución automáticamente y me devuelve el log de error para que te lo traiga a vos.
+2. **Arquitectura por Perfil de Proyecto** (declarado en `@init`):
+   - **Perfil `production` (default):** 4 capas desacopladas obligatorias — UI/Vista, Hooks/Estado, Red/Servicios/API, Datos/Persistencia. Ninguna capa puede mezclar responsabilidades.
+   - **Perfil `mvp`:** capas 1 y 2 pueden colapsar en un único componente con estado local; capas 3 y 4 pueden unificarse en un service file plano. Se prioriza velocidad de iteración sobre separación estricta. El perfil `mvp` se gradúa automáticamente a `production` cuando el proyecto supere los 10 archivos de lógica de negocio o el usuario lo declare explícitamente.
+3. **Circuit Breaker (Freno Anti-Bucle):** si un test o `npx tsc --noEmit` falla **N veces consecutivas** (N = `circuit_breaker_threshold` del Paquete, default `2`), Flash detiene su ejecución automáticamente y me devuelve el log de error para que te lo traiga a vos. Para `@refactor` sobre código legacy, Argon puede elevar el threshold a `3` o `4` en el paquete.
 4. **Restricciones Inalterables:** prohibido trabajar en `main`, instalar paquetes en `package.json` sin permiso, tocar `.env`, borrar archivos o refactorizar código fuera del cerco.
 
 ### B. Comandos y Workflows Locales (`.ai/workflows/` y `.ai/agents/`)
@@ -67,6 +65,8 @@ Usá siempre esta estructura exacta para que el Router de `AGENTS.md` en Antigra
 
 ## 1. RAMA Y CONTEXT SCOPE (CERCO DE SEGURIDAD ESTRICTO)
 - **Rama Git:** `[feature/nombre-feature | bugfix/cerco-nombre-bug]`
+- **Perfil de Proyecto:** `[production | mvp]` (declarado en `@init`)
+- **Circuit Breaker Threshold:** `[2 | 3 | 4]` — número máximo de fallos consecutivos antes de detenerse. Usar `3` o `4` solo en refactors de código legacy.
 - **Consulta Engram:** consultar nodo `[nombre-del-nodo]` antes de iniciar.
 - **ARCHIVOS DENTRO DEL ALCANCE (Lectura/Escritura permitida):**
   - `[ruta/exacta/archivo1.ts]`
@@ -102,8 +102,9 @@ En `[ruta/archivo1.ts]`, implementar la lógica siguiendo estas reglas estrictas
 ### Paso 3: Validación Empírica, Circuit Breaker y Engram
 1. Volver a correr `[comando exacto de test]` hasta que dé VERDE.
 2. Ejecutar verificación global de tipos: `npx tsc --noEmit`.
-3. **REGLA CIRCUIT BREAKER:** si el test o `tsc` falla 2 veces consecutivas, DETENER ejecución inmediatamente y devolver el log del error sin intentar nuevos parches.
-4. **Persistencia en Engram:** una vez todo en verde, guardar en Engram bajo el nodo `[nombre-del-nodo]` este resumen:
+3. **REGLA CIRCUIT BREAKER:** si el test o `tsc` falla [circuit_breaker_threshold] veces consecutivas, DETENER ejecución inmediatamente y devolver el log del error sin intentar nuevos parches.
+4. **Smoke test obligatorio (ceguera lógica):** correr el suite completo del proyecto (`[npm test | npx vitest run | npx jest --watchAll=false]`) para detectar regresiones de lógica fuera del cerco que `tsc` no captura. Si falla algún test ajeno al cerco, reportarlo al usuario antes de cerrar el paquete. No intentar arreglarlo sin nuevo Paquete Quirófano.
+5. **Persistencia en Engram:** una vez todo en verde, guardar en Engram bajo el nodo `[nombre-del-nodo]` este resumen:
    > "[Escribir acá el resumen de 2 a 3 líneas de la decisión técnica implementada]"
 ````
 

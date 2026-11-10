@@ -20,16 +20,23 @@
 - **Memoria Primero (Engram):** Antes de explorar el repositorio, consultá el servidor MCP de **Engram** para recuperar el contexto arquitectónico del módulo.
 - **Respeto Absoluto al Cerco de Seguridad:** Solo tenés permitido leer y modificar los archivos listados en `ARCHIVOS DENTRO DEL ALCANCE` (o `ARCHIVOS PERMITIDOS`) del Paquete de Ejecución actual.
 - **Búsqueda Quirúrgica:** Para rastrear referencias cruzadas (Fase 3), usá comandos precisos (`rg`, `grep -rn`) buscando nombres de funciones o tipos específicos. Prohibido leer archivos completos solo para explorar.
-- **Circuit Breaker (Freno Anti-Bucle):** Si tras implementar un cambio, un test o `tsc --noEmit` falla **2 veces consecutivas**, DETENÉ la ejecución inmediatamente, mostrá el log exacto del error y esperá instrucciones humanas. Prohibido adivinar o probar parches por fuerza bruta.
+- **Circuit Breaker (Freno Anti-Bucle):** Si tras implementar un cambio, un test o `tsc --noEmit` falla **N veces consecutivas** (N = `circuit_breaker_threshold` del Paquete, default `2`), DETENÉ la ejecución inmediatamente, mostrá el log exacto del error y esperá instrucciones humanas. Prohibido adivinar o probar parches por fuerza bruta.
 - **Principios de Código:** Aplicá estrictamente KISS, YAGNI y TDD (Red -> Green -> Refactor). Cero explicaciones largas al finalizar; reportá estado de tests y cambios en viñetas de 1 línea.
 
 ---
 
-## 2. Arquitectura Estricta en 4 Capas Desacopladas
+## 2. Arquitectura por Perfil de Proyecto
+El perfil se detecta automáticamente en `@init` y condiciona las reglas de capas:
+
+**Perfil `production` (proyectos con > 10 archivos de lógica):** 4 capas estrictamente desacopladas y obligatorias:
 1. **Capa UI / Vista:** Componentes visuales puros. Prohibido incluir llamadas HTTP directas o lógica de negocio compleja.
 2. **Capa de Hooks / Estado:** Manejo de estado local/global, sockets o caché de consultas (React Query, Zustand, etc.).
 3. **Capa de Red / Servicios / API:** Clientes HTTP, controladores REST/WebSockets, servicios de dominio, validadores (Zod) y DTOs.
 4. **Capa de Datos / Persistencia:** Modelos ORM/SQL, repositorios y migraciones explícitas.
+
+**Perfil `mvp` (proyectos con ≤ 10 archivos de lógica):** capas 1-2 pueden colapsar; capas 3-4 pueden unificarse en un service plano. Se gradúa a `production` automáticamente al superar el umbral o por declaración explícita del usuario (`@perfil production`).
+
+> **Limitación conocida del bridge humano:** el flujo Arquitecto (web) → Ejecutor (local) requiere que el desarrollador copie y pegue los Paquetes Quirófano manualmente. Esto es un trade-off consciente de diseño: se sacrifica velocidad de flujo para ganar control quirúrgico. Para tareas triviales, usá `@quick` para saltear el ritual.
 
 ---
 
