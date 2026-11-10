@@ -35,7 +35,7 @@
 ---
 
 ## 2. Arquitectura por Perfil de Proyecto
-El perfil se detecta en `@init` y condiciona las reglas de capas (el umbral de 10 archivos es una heurística inicial; la criticidad de dominio —pagos, auth, persistencia crítica— o la indicación expresa del usuario elevan el perfil a `production`):
+El perfil se detecta en `@init` y condiciona las reglas de capas (el umbral de 10 archivos es una heurística inicial; la criticidad de dominio —pagos, auth, persistencia crítica— impone un **perfil mínimo obligatorio `production`** que el desarrollador no puede rebajar a `mvp`):
 
 **Perfil `production` (sistemas críticos o con > 10 archivos de lógica):** 4 capas estrictamente desacopladas y obligatorias:
 1. **Capa UI / Vista:** Componentes visuales puros. Prohibido incluir llamadas HTTP directas o lógica de negocio compleja.
@@ -43,7 +43,7 @@ El perfil se detecta en `@init` y condiciona las reglas de capas (el umbral de 1
 3. **Capa de Red / Servicios / API:** Clientes HTTP, controladores REST/WebSockets, servicios de dominio, validadores (Zod) y DTOs.
 4. **Capa de Datos / Persistencia:** Modelos ORM/SQL, repositorios y migraciones explícitas.
 
-**Perfil `mvp` (prototipos no críticos con ≤ 10 archivos de lógica):** capas 1-2 pueden colapsar; capas 3-4 pueden unificarse en un service plano. Se gradúa a `production` automáticamente al superar el umbral, al incorporar módulos críticos o por declaración explícita del usuario (`@perfil production`).
+**Perfil `mvp` (prototipos no críticos con ≤ 10 archivos de lógica):** capas 1-2 pueden colapsar; capas 3-4 pueden unificarse en un service plano. Se gradúa a `production` automáticamente al superar el umbral, al incorporar módulos críticos o por declaración explícita del usuario (`@perfil production`). Si el módulo maneja auth, pagos o datos sensibles, el perfil `production` es inalterable.
 
 **Adaptabilidad por paradigma:** En proyectos backend puro (NestJS, FastAPI, Go, Rust), CLI o arquitecturas limpias/hexagonales, las 4 capas se mapean conceptualmente:
 - *Capa 1:* Adaptadores Primarios / Entrada (Controladores HTTP, Handlers CLI, Consumers de eventos).
@@ -60,13 +60,16 @@ El perfil se detecta en `@init` y condiciona las reglas de capas (el umbral de 1
 Cuando el usuario te entregue un **Paquete Quirófano / Paquete de Ejecución (Harness)** diseñado por el Tech Lead (Gemini 4 Argon):
 - **Ramas Aisladas:** Prohibido trabajar en `main`. Creá siempre `feature/[nombre]` o `bugfix/cerco-[nombre]`.
 - **Orden TDD Inquebrantable:**
+  0. **Preflight Universal de Git y Baseline:** Antes de escribir una sola línea, verificar:
+     - `git status --porcelain`: si los archivos en `WRITE_SCOPE` tienen cambios no commiteados del desarrollador, DETENER ejecución (`[DIRTY_STATE_DETECTED]`).
+     - Baseline de tests: registrar fallos preexistentes (`known_failures`). El Circuit Breaker solo computa regresiones nuevas (`new_failures > 0`).
   1. **Fase Roja (Red):** Escribí o actualizá primero el test indicado en el paquete, ejecutalo y verificá que falle por aserción funcional (prohibido aceptar falsos rojos por importación rota o compilación).
   2. **Fase Verde (Green):** Implementá el código mínimo indispensable dentro del cerco para pasar el test.
-  3. **Fase Refactor (Opcional):** Si tras pasar los tests se introdujo duplicación o complejidad innecesaria, refactorizá dentro de `WRITE_SCOPE` sin agregar comportamiento nuevo y volvé a correr tests. Si no hay deuda inmediata, declarar `REFACTOR_SKIPPED` y avanzar.
+  3. **Fase Refactor (Opcional):** Si tras pasar los tests se introdujo duplicación o complejidad innecesaria, refactorizá dentro de `WRITE_SCOPE` sin agregar comportamiento nuevo ni alterar el orden de efectos secundarios y volvé a correr tests. Si no hay deuda inmediata, declarar `REFACTOR_SKIPPED` y avanzar.
 - **Retrocompatibilidad y Migración de Contratos:** Prohibido alterar firmas de funciones públicas, endpoints o tipos compartidos sin aplicar parámetros opcionales, Options Pattern o Adapter Pattern. Si una rotura de contrato es estrictamente necesaria por cambio de requerimiento, debe ser declarada explícitamente por el Arquitecto como `MIGRACIÓN CONTRACTUAL`, con adaptación de consumidores, suite de compatibilidad y aprobación humana obligatoria.
 - **Validación Empírica Obligatoria:** Ninguna tarea está terminada hasta que pasen:
   1. Los tests unitarios/integración del cerco.
-  2. El verificador estático de tipos global (`npx tsc --noEmit`).
+  2. El verificador estático de tipos del stack correspondiente (`tsc --noEmit`, `mypy`, `go vet`, `cargo check`).
   3. La actualización del nodo correspondiente en **Engram** (si Engram está offline, la tarea de código se cierra como exitosa y la sincronización se marca como `PENDING_SYNC` sin bloquear la entrega).
 
 ---

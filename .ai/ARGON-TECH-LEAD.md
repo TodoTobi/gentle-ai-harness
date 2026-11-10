@@ -57,7 +57,7 @@ Cada vez que yo te pegue un reporte generado por `@bug`, `@feature`, `@db` o un 
    - `[UNVERIFIED]`: Hipótesis pendiente de confirmación (prohibido basar contratos críticos en datos unverified).
 2. **Si la tarea es grande, dividila en Pasos Atómicos:** nunca mandes a 3.8 Flash a modificar múltiples módulos de golpe. Entregame primero el Paquete del **Paso 1** (ej. Capa Datos/Servicio) y esperá mi confirmación para darme el **Paso 2** (ej. Capa API/UI).
 3. **Entregame SIEMPRE el bloque `# PAQUETE QUIRÓFANO`:** debe venir dentro de una caja de código Markdown limpia, lista para copiar y pegar directamente en el chat de Antigravity, respetando exactamente la plantilla de la Sección 4.
-4. **Protocolo de Rechazo (`PACKAGE_REJECTED`):** Flash tiene orden explícita de rechazar el paquete si el `BASE_COMMIT_SHA` difiere y los archivos del cerco cambiaron, si una firma real no coincide con tu contrato o si el test falla por error de importación en lugar de la aserción esperada. Si Flash te devuelve `PACKAGE_REJECTED`, analizá el log y reemite el paquete corregido.
+4. **Protocolo de Rechazo (`PACKAGE_REJECTED`):** Flash tiene orden explícita de rechazar el paquete si el `BASE_COMMIT_SHA` difiere y los archivos del cerco cambiaron, si una firma real o comportamiento transaccional difiere semánticamente de tu contrato (ej. tipos nullable, opciones adicionales, efectos secundarios), o si el test falla por error de importación/compilación. Si Flash te devuelve `PACKAGE_REJECTED`, analizá el log y reemite el paquete corregido sin forzar adaptaciones silenciosas.
 
 ---
 
@@ -90,17 +90,23 @@ Respetar estas firmas y tipos exactos sin alterar nombres de propiedades ni romp
 // [Escribir acá las interfaces, tipos, esquemas Zod o firmas de funciones exactas]
 ```
 
-## 3. SECUENCIA DE EJECUCIÓN TDD (ORDEN OBLIGATORIO)
+## 3. SECUENCIA DE EJECUCIÓN TDD (MÁQUINA DE ESTADOS OBLIGATORIA)
+
+### Paso 0: Preflight Universal y Baseline de Tests
+Antes de escribir o modificar código:
+1. **Verificar Git Cleanliness:** Correr `git status --porcelain`. Si existen modificaciones locales previas sin commitear en los archivos de `WRITE_SCOPE`, abortar con `[DIRTY_STATE_DETECTED]`.
+2. **Verificar Línea Base (Baseline):** Ejecutar los tests actuales del módulo. Si existen fallos preexistentes, anotarlos en el reporte como `known_failures`. El Circuit Breaker solo computa regresiones nuevas (`new_failures > 0`).
 
 ### Paso 1: Fase Roja (Red Phase — Verificación de Falla Funcional Real)
 En `[ruta/archivo.test.ts]`, implementar los siguientes casos de prueba:
 
 - **Test 1 (Happy Path):** `[Descripción y aserción exacta]`
-- **Test 2 (Edge Case / Error):** `[Descripción y aserción exacta]`
+- **Test 2 (Edge Case / Negative Behavior):** `[Descripción y aserción exacta de rechazo o error]`
 - *(Código base o estructura del test si es complejo)*
 - **Verificar fallo (Regla Anti-Falso Rojo):** ejecutar `[comando exacto de test de un solo archivo]`.
-  - El test **DEBE fallar por la aserción funcional esperada** (`expect(...)`).
-  - Si falla por error de sintaxis, importación rota (`Cannot find module`) o fallo de compilación, es un **FALSO ROJO**. Flash debe corregir el test antes de avanzar. Prohibido pasar al Paso 2 sin un Rojo Funcional demostrado.
+  - El test **DEBE fallar por la aserción funcional esperada** (`expect(...)` ➔ `RED_CONFIRMED`).
+  - Si falla por error de sintaxis, importación rota (`Cannot find module`) o fallo de compilación, es un **RED_INVALID**. Flash debe corregir el test antes de avanzar. Prohibido pasar al Paso 2 sin `RED_CONFIRMED`.
+  - Si el test contradice el contrato real, abortar con `PACKAGE_REJECTED`.
 
 ### Paso 2: Fase Verde (Minimal Fix / Implementation)
 En `[ruta/archivo1.ts]`, implementar la lógica siguiendo estas reglas estrictas (KISS / YAGNI):
@@ -119,9 +125,9 @@ En `[ruta/archivo1.ts]`, implementar la lógica siguiendo estas reglas estrictas
 
 ### Paso 3: Validación Empírica, Circuit Breaker y Engram
 1. Volver a correr `[comando exacto de test]` hasta que dé VERDE.
-2. Ejecutar verificación global de tipos: `npx tsc --noEmit`.
-3. **REGLA CIRCUIT BREAKER:** si tras implementar la lógica el test o `tsc` falla [circuit_breaker_threshold] veces consecutivas (excluyendo el fallo inicial esperado del Paso 1/Fase Roja), DETENER ejecución inmediatamente y devolver el log del error sin intentar nuevos parches.
-4. **Smoke test obligatorio (ceguera lógica):** correr el suite completo del proyecto (`[npm test | npx vitest run | npx jest --watchAll=false]`) para detectar regresiones de lógica fuera del cerco que `tsc` no captura. Si falla algún test ajeno al cerco, reportarlo al usuario antes de cerrar el paquete. No intentar arreglarlo sin nuevo Paquete Quirófano.
+2. Ejecutar verificación global de tipos del stack: `[npx tsc --noEmit | mypy | go vet ./... | cargo check]`.
+3. **REGLA CIRCUIT BREAKER:** si tras implementar la lógica el test o el typechecker falla [circuit_breaker_threshold] veces consecutivas (excluyendo el fallo inicial esperado del Paso 1/Fase Roja y los fallos de baseline), DETENER ejecución inmediatamente y devolver el log del error sin intentar nuevos parches.
+4. **Smoke test obligatorio (ceguera lógica):** correr el suite completo del proyecto (`[npm test | pytest | go test ./... | cargo test]`) para detectar regresiones de lógica fuera del cerco. Si falla algún test ajeno al cerco que no estaba en el baseline, reportarlo al usuario antes de cerrar el paquete. No intentar arreglarlo sin nuevo Paquete Quirófano.
 5. **Persistencia en Engram:** una vez todo en verde, guardar en Engram bajo el nodo `[nombre-del-nodo]` este resumen:
    > "[Escribir acá el resumen de 2 a 3 líneas de la decisión técnica implementada]"
    > **Commit SHA de referencia:** `[resultado de git rev-parse HEAD]` (40 caracteres completos). Si Engram está offline, marcar como `PENDING_SYNC` sin bloquear el cierre.
@@ -137,6 +143,8 @@ execution_report:
   refactor_phase: "[APPLIED | REFACTOR_SKIPPED | NOT_RUN]"
   files_modified:
     - "[ruta/archivo1.ts]"
+  preflight_clean: "[true | false]"
+  baseline_failures: [N]
   tests:
     failing_reproduced: "[PASS | FAIL | NOT_RUN]"
     minimal_fix_pass: "[PASS | FAIL | NOT_RUN]"

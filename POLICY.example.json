@@ -1,7 +1,7 @@
 {
-  "title": "Gentle AI Harness — Runtime Security Policy Contract",
-  "version": "2.0.0",
-  "description": "Especificación declarativa de políticas de ejecución, límites de alcance y gobernanza para agentes. Define la jerarquía de precedencia y reglas adaptables a múltiples stacks tecnológicos.",
+  "title": "Gentle AI Harness — Declarative Agent Governance Policy",
+  "version": "2.2.0",
+  "description": "Especificación declarativa de políticas de ejecución, límites de alcance y gobernanza para agentes. Define la jerarquía de precedencia y reglas adaptables a múltiples stacks tecnológicos (la ejecución física y el sandbox son provistos por el runtime anfitrión, como Google Antigravity).",
   "precedence_hierarchy": [
     "1. ABSOLUTE_FORBIDDEN: Prohibiciones duras de seguridad innegociables (secretos, .env, .git, tokens, commits directos a main). Nunca sobreescribibles por ningún agente o paquete.",
     "2. HUMAN_EXPLICIT_APPROVAL: Decisiones y autorizaciones otorgadas expresamente por el desarrollador en tiempo real.",
@@ -40,7 +40,11 @@
     "execution_limits": {
       "default_max_files_modified_per_packet": 3,
       "default_max_diff_lines": 300,
-      "allow_packet_override": true,
+      "packet_override": {
+        "allowed": true,
+        "requires_human_approval": true,
+        "note": "Superar los límites de archivos o diffs exige autorización humana explícita en el paquete y no puede eludir prohibiciones absolutas."
+      },
       "circuit_breaker": {
         "default_threshold": 2,
         "legacy_refactor_threshold": 4,
