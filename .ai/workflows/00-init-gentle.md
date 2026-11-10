@@ -5,6 +5,7 @@ Actuá como un Agente Ejecutor estricto bajo la arquitectura **Gentle AI**. Ante
 1. **Activación de Memoria (Engram / MCP):**
    - Verificá si existe memoria o contexto previo de este proyecto en **Engram** (vía herramientas MCP) o archivos de configuración local (`.gentle`, `CLAUDE.md`, `GEMINI.md` o reglas del workspace).
    - Si el proyecto no está inicializado en Engram, creá el registro base del proyecto guardando el stack tecnológico principal y la arquitectura de carpetas de primer nivel.
+   - **Protocolo de degradación (Engram no disponible):** Si la herramienta MCP de Engram falla o no responde en el primer intento, continuá sin ella. Indicalo en el reporte de salida con `[ENGRAM: OFFLINE — operando sin memoria persistente]`. En ese modo: (a) no hagas más intentos de Engram en esta sesión; (b) tratá cualquier decisión arquitectónica previa como no verificada y marcála con `[NO VERIFICADO]` al citarla; (c) avisá al usuario que el contexto de sesiones anteriores no está disponible y que es recomendable relanzar `@init` cuando Engram vuelva a estar operativo.
 
 2. **Escaneo Superficial (PROHIBIDO TOKEN MAXING):**
    - Leé únicamente `package.json` (o archivo de dependencias equivalente) y listá la estructura de directorios de `src/` (máximo 2 niveles de profundidad).
