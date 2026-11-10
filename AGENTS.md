@@ -11,14 +11,18 @@
 | `@db [cambio de esquema]` | Leé y ejecutá estrictamente `.ai/workflows/03-db-migration.md` |
 | `@refactor [ruta/archivo]` | Leé y ejecutá estrictamente `.ai/workflows/04-refactor-aislado.md` |
 | `@cierre` o `@pr` | Auditá con `.ai/agents/code-reviewer.md`, si hay cambios de API usá `.ai/agents/documentador.md`, y ejecutá `.ai/workflows/05-gatekeeper-pr.md` |
-| `@quick [descripción]` | Aplicá el cambio directamente sin ritual TDD ni Paquete Quirófano. Solo para cambios de **bajo riesgo semántico**: copy, textos UI, colores, ajustes de estilo. **No** es un criterio de líneas — un cambio de 2 líneas en una condición de autorización no es `@quick`. Confirmá el diff con el usuario antes de hacer commit. |
+| `@quick [descripción]` | Aplicá el cambio directamente sin ritual TDD ni Paquete Quirófano. Solo para cambios de **bajo riesgo semántico**: copy, textos UI, colores, estilos puramente cosméticos. **PROHIBIDO** en cambios que alteren: estado de negocio, contratos públicos, validaciones, permisos/auth, persistencia o navegación con impacto funcional. Confirmá el diff con el usuario antes de hacer commit. |
 | Bloque `# PAQUETE QUIRÓFANO` | Ejecutá directamente la Sección 3 (Reglas de Oro del Quirófano) respetando el Cerco de Seguridad recibido. |
 
 ---
 
 ## 1. Filosofía y Economía de Tokens (Anti-Token Maxing)
 - **Memoria Primero (Engram):** Antes de explorar el repositorio, consultá el servidor MCP de **Engram** para recuperar el contexto arquitectónico del módulo.
-- **Respeto Absoluto al Cerco de Seguridad:** Solo tenés permitido leer y modificar los archivos listados en `ARCHIVOS DENTRO DEL ALCANCE` (o `ARCHIVOS PERMITIDOS`) del Paquete de Ejecución actual.
+- **Tres Scopes Operativos Inquebrantables:**
+  - `WRITE_SCOPE`: Únicos archivos donde tenés autorización de lectura y modificación (declarados en `ARCHIVOS DENTRO DEL ALCANCE` del paquete).
+  - `READ_SCOPE`: Archivos de contratos, DTOs e interfaces que podés consultar pero jamás editar.
+  - `VALIDATION_SCOPE`: Comandos globales de verificación (`tsc --noEmit`, tests de regresión) que analizan el proyecto completo sin otorgar permisos de lectura libre ni escritura fuera del cerco.
+- **Dependencias Descubiertas (`DISCOVERED_DEPENDENCY — NOT AUTHORIZED`):** Si mediante búsquedas quirúrgicas (`rg`/`grep`) descubrís un archivo fuera del cerco necesario para la solución, **no lo abras ni lo modifiques**. Detenete y reportá: `[DISCOVERED_DEPENDENCY — NOT AUTHORIZED: ruta/archivo.ts]`. Solo podés incorporarlo si el usuario autoriza la ampliación. Si el archivo figuraba explícitamente en `ARCHIVOS PROHIBIDOS` o el usuario no autoriza, el Circuit Breaker frena de inmediato.
 - **Búsqueda Quirúrgica:** Para rastrear referencias cruzadas (Fase 3), usá comandos precisos (`rg`, `grep -rn`) buscando nombres de funciones o tipos específicos. Prohibido leer archivos completos solo para explorar.
 - **Circuit Breaker (Freno Anti-Bucle):** Si tras implementar un cambio en Fase Verde (Green), un test o `tsc --noEmit` falla **N veces consecutivas** (N = `circuit_breaker_threshold` del Paquete, default `2`), DETENÉ la ejecución inmediatamente, mostrá el log exacto del error y esperá instrucciones humanas. Prohibido adivinar o probar parches por fuerza bruta. **Importante:** El fallo inicial esperado en la Fase Roja (Red Phase) de TDD NO contabiliza como fallo del Circuit Breaker; solo cuentan los fallos producidos durante la implementación o validación de tipos.
 - **Principios de Código:** Aplicá estrictamente KISS, YAGNI y TDD (Red -> Green -> Refactor). Cero explicaciones largas al finalizar; reportá estado de tests y cambios en viñetas de 1 línea.
@@ -53,7 +57,7 @@ Cuando el usuario te entregue un **Paquete Quirófano / Paquete de Ejecución (H
 - **Orden TDD Inquebrantable:**
   1. **Fase Roja (Red):** Escribí o actualizá primero el test indicado en el paquete, ejecutalo y verificá que falle.
   2. **Fase Verde (Green):** Implementá el código mínimo indispensable dentro del cerco para pasar el test.
-- **Retrocompatibilidad de Contratos:** Prohibido alterar firmas de funciones públicas, endpoints o tipos compartidos sin aplicar parámetros opcionales, Options Pattern o Adapter Pattern.
+- **Retrocompatibilidad y Migración de Contratos:** Prohibido alterar firmas de funciones públicas, endpoints o tipos compartidos sin aplicar parámetros opcionales, Options Pattern o Adapter Pattern. Si una rotura de contrato es estrictamente necesaria por cambio de requerimiento, debe ser declarada explícitamente por el Arquitecto como `MIGRACIÓN CONTRACTUAL`, con adaptación de consumidores, suite de compatibilidad y aprobación humana obligatoria.
 - **Validación Empírica Obligatoria:** Ninguna tarea está terminada hasta que pasen:
   1. Los tests unitarios/integración del cerco.
   2. El verificador estático de tipos global (`npx tsc --noEmit`).

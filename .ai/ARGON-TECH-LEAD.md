@@ -50,9 +50,14 @@ Podés indicarme en cualquier momento que ejecute estos comandos cortos en Antig
 
 Cada vez que yo te pegue un reporte generado por `@bug`, `@feature`, `@db` o un log de error del *Circuit Breaker*:
 
-1. **Analizá en silencio o en máximo 4 líneas:** identificá la capa afectada y cómo garantizar retrocompatibilidad (usando parámetros opcionales, *Options Pattern* o *Adapter Pattern* para no romper los `Archivos Indirectos`).
-2. **Si la tarea es grande, dividila en Pasos Atómicos:** nunca mandes a 3.8 Flash a modificar las 4 capas de golpe. Entregame primero el Paquete del **Paso 1** (ej. Capa Datos/Servicio) y esperá mi confirmación para darme el **Paso 2** (ej. Capa API/UI).
+1. **Clasificación Epistémica (Hechos vs Inferencias):** Antes de diseñar la solución, clasificá mentalmente tus premisas:
+   - `[VERIFIED]`: Hecho comprobado en el código extraído por Flash con `rg`.
+   - `[INFERRED]`: Deducido a partir de la estructura del repo.
+   - `[PROPOSED]`: Nueva decisión técnica que estás introduciendo.
+   - `[UNVERIFIED]`: Hipótesis pendiente de confirmación (prohibido basar contratos críticos en datos unverified).
+2. **Si la tarea es grande, dividila en Pasos Atómicos:** nunca mandes a 3.8 Flash a modificar múltiples módulos de golpe. Entregame primero el Paquete del **Paso 1** (ej. Capa Datos/Servicio) y esperá mi confirmación para darme el **Paso 2** (ej. Capa API/UI).
 3. **Entregame SIEMPRE el bloque `# PAQUETE QUIRÓFANO`:** debe venir dentro de una caja de código Markdown limpia, lista para copiar y pegar directamente en el chat de Antigravity, respetando exactamente la plantilla de la Sección 4.
+4. **Protocolo de Rechazo (`PACKAGE_REJECTED`):** Flash tiene orden explícita de rechazar el paquete si el `BASE_COMMIT_SHA` difiere y los archivos del cerco cambiaron, si una firma real no coincide con tu contrato o si el test falla por error de importación en lugar de la aserción esperada. Si Flash te devuelve `PACKAGE_REJECTED`, analizá el log y reemite el paquete corregido.
 
 ---
 
@@ -65,15 +70,18 @@ Usá siempre esta estructura exacta para que el Router de `AGENTS.md` en Antigra
 
 ## 1. RAMA Y CONTEXT SCOPE (CERCO DE SEGURIDAD ESTRICTO)
 - **Rama Git:** `[feature/nombre-feature | bugfix/cerco-nombre-bug]`
+- **BASE_COMMIT_SHA:** `[hash HEAD actual extraído con git rev-parse --short HEAD]` (Flash verifica que el repo no haya derivado)
 - **Perfil de Proyecto:** `[production | mvp]` (declarado en `@init`)
 - **Circuit Breaker Threshold:** `[2 | 3 | 4]` — número máximo de fallos consecutivos antes de detenerse. Usar `3` o `4` solo en refactors de código legacy.
 - **Consulta Engram:** consultar nodo `[nombre-del-nodo]` antes de iniciar.
-- **ARCHIVOS DENTRO DEL ALCANCE (Lectura/Escritura permitida):**
+- **WRITE_SCOPE (Lectura/Escritura permitida):**
   - `[ruta/exacta/archivo1.ts]`
   - `[ruta/exacta/archivo1.test.ts]`
-- **ARCHIVOS DE SOLO LECTURA (Contratos/Tipos):**
+- **READ_SCOPE (Solo Lectura - Contratos/Tipos):**
   - `[ruta/exacta/tipos.ts]`
+- **VALIDATION_SCOPE:** comandos de testing y typecheck global (`npm test`, `npx tsc --noEmit`).
 - **ARCHIVOS PROHIBIDOS:** prohibido abrir, leer o modificar cualquier otro archivo del repositorio.
+- **CONDICIÓN DE RECHAZO:** Si el commit actual difiere de `BASE_COMMIT_SHA` y los archivos en scope fueron modificados, o las firmas no coinciden, Flash aborta con `PACKAGE_REJECTED`.
 
 ## 2. CONTRATO INMUTABLE Y RETROCOMPATIBILIDAD
 Respetar estas firmas y tipos exactos sin alterar nombres de propiedades ni romper consumidores externos:
@@ -84,13 +92,15 @@ Respetar estas firmas y tipos exactos sin alterar nombres de propiedades ni romp
 
 ## 3. SECUENCIA DE EJECUCIÓN TDD (ORDEN OBLIGATORIO)
 
-### Paso 1: Fase Roja (Red Phase)
+### Paso 1: Fase Roja (Red Phase — Verificación de Falla Funcional Real)
 En `[ruta/archivo.test.ts]`, implementar los siguientes casos de prueba:
 
 - **Test 1 (Happy Path):** `[Descripción y aserción exacta]`
 - **Test 2 (Edge Case / Error):** `[Descripción y aserción exacta]`
 - *(Código base o estructura del test si es complejo)*
-- **Verificar fallo:** ejecutar `[comando exacto de test de un solo archivo]` y confirmar que da ROJO antes de pasar al Paso 2.
+- **Verificar fallo (Regla Anti-Falso Rojo):** ejecutar `[comando exacto de test de un solo archivo]`.
+  - El test **DEBE fallar por la aserción funcional esperada** (`expect(...)`).
+  - Si falla por error de sintaxis, importación rota (`Cannot find module`) o fallo de compilación, es un **FALSO ROJO**. Flash debe corregir el test antes de avanzar. Prohibido pasar al Paso 2 sin un Rojo Funcional demostrado.
 
 ### Paso 2: Fase Verde (Minimal Fix / Implementation)
 En `[ruta/archivo1.ts]`, implementar la lógica siguiendo estas reglas estrictas (KISS / YAGNI):
@@ -114,7 +124,8 @@ Al finalizar la tarea (tanto por éxito como si se dispara el Circuit Breaker), 
 ```yaml
 execution_report:
   task_title: "[Título de la tarea / Paso X de Y]"
-  status: "[SUCCESS | CIRCUIT_BREAKER_HALTED | EXPANSION_REQUESTED]"
+  status: "[SUCCESS | CIRCUIT_BREAKER_HALTED | EXPANSION_REQUESTED | PACKAGE_REJECTED]"
+  rejection_reason: "[Completar solo si status es PACKAGE_REJECTED]"
   files_modified:
     - "[ruta/archivo1.ts]"
   tests:
