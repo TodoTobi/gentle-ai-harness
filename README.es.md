@@ -60,11 +60,12 @@ flowchart TD
     subgraph Ejecutor ["⚡ CEREBRO EJECUTOR — Runner Quirúrgico (Gemini 3.8 Flash / Antigravity)"]
         B1 --> C1["Lectura de Reglas en AGENTS.md"]
         C1 --> C2["Consulta a Memoria Persistente Engram MCP"]
-        C2 --> C3["Fase Roja: Escribir test y verificar fallo"]
+        C2 --> C3["Fase Roja: Escribir test y verificar fallo funcional"]
         C3 --> C4["Fase Verde: Fix mínimo indispensable"]
-        C4 --> C5{"Validación Empírica\n(Tests + tsc --noEmit)"}
+        C4 --> C4R["Fase Refactor (Opcional): Invarianza y limpieza"]
+        C4R --> C5{"Validación Empírica\n(Tests + tsc --noEmit)"}
         C5 -- "Pasa (Verde)" --> C6["@cierre y Gatekeeper de PR"]
-        C5 -- "Falla >= 2 veces" --> CB["🚨 CIRCUIT BREAKER DISPARADO\nFreno Inmediato y Entrega de Logs"]
+        C5 -- "Falla >= N veces (Green/tsc)" --> CB["🚨 CIRCUIT BREAKER DISPARADO\nFreno Inmediato y Entrega de Logs"]
     end
 
     CB -.->|"Devolver log exacto al Arquitecto"| A2
@@ -75,7 +76,7 @@ flowchart TD
 | **División Cognitiva** | 1 modelo hace arquitectura y código | Agentes corriendo en bucle | **Staff Architect (Argon) + Runner Quirúrgico (Flash)** |
 | **Consumo de Tokens** | Agota la ventana rápidamente | Altísimo costo en tokens | **Minimalista / Anti-Token Maxing (`rg` + Engram MCP)** |
 | **Límite de Alcance** | Lectura/escritura libre de archivos | Contenedor sin cerco estricto | **Cerco de Seguridad estricto (Whitelist única)** |
-| **Freno Anti-Bucle** | Adivina parches hasta romper la rama | Reinicia todo el pipeline | **Circuit Breaker: frena tras 2 fallos consecutivos** |
+| **Freno Anti-Bucle** | Adivina parches hasta romper la rama | Reinicia todo el pipeline | **Circuit Breaker: frena tras N fallos consecutivos (excluye Fase Roja esperada)** |
 | **Memoria Persistente** | Se pierde al cerrar el chat | Caché volátil de sesión | **Grafo persistente con Engram MCP** |
 | **Rigor de Capas** | Código espagueti | Límites inconsistentes | **Arquitectura por perfil de proyecto (`production` / `mvp`)** |
 
@@ -83,9 +84,9 @@ flowchart TD
 
 ## 🏛️ Arquitectura por Perfil de Proyecto
 
-El perfil se detecta automáticamente en `@init` y condiciona las reglas de capas:
+El harness calibra tu perfil de proyecto en `@init` (los 10 archivos son una heurística inicial; la criticidad de dominio como autenticación, pagos o persistencia sensible exige `production` independientemente de la cantidad de archivos):
 
-**Perfil `production`** (proyectos con > 10 archivos de lógica) — separación estricta en 4 capas, obligatoria:
+**Perfil `production`** (sistemas críticos o con > 10 archivos de lógica) — separación estricta en 4 capas, obligatoria:
 
 ```mermaid
 graph TD
@@ -115,7 +116,7 @@ graph TD
 3. **Capa 3 (Red / Servicios / API):** Clientes HTTP, endpoints, servicios de dominio, esquemas Zod y DTOs.
 4. **Capa 4 (Datos / Persistencia):** Modelos ORM/SQL, repositorios y migraciones explícitas.
 
-**Perfil `mvp`** (proyectos con ≤ 10 archivos de lógica) — las capas 1-2 pueden colapsar en un componente con estado local; las capas 3-4 pueden unificarse en un service plano. Se gradúa a `production` automáticamente al superar el umbral o por declaración explícita (`@perfil production`).
+**Perfil `mvp`** (prototipos no críticos con ≤ 10 archivos de lógica) — las capas 1-2 pueden colapsar en un componente con estado local; las capas 3-4 pueden unificarse en un service plano. Se gradúa a `production` al incorporar módulos críticos, superar el umbral heurístico o por declaración explícita (`@perfil production`).
 
 > **Limitación conocida — el Puente Humano:** el flujo Arquitecto → Ejecutor requiere que el desarrollador copie y pegue los Paquetes Quirófano manualmente. Es un trade-off consciente: control quirúrgico sobre velocidad bruta. Para cambios triviales, usá `@quick` para saltear el ritual.
 
@@ -131,7 +132,7 @@ El harness impone las directivas estrictas detalladas en [`AGENTS.md`](./AGENTS.
   * **Scope de solo lectura:** archivos de contratos/tipos que puede consultar pero nunca modificar.
   * **Scope de validación:** comandos globales (`tsc --noEmit`, suite completa de tests) que se ejecutan contra todo el proyecto sin otorgar al agente permisos de modificación fuera del cerco.
 * **Búsqueda Quirúrgica:** Rastreo de llamadas mediante herramientas de alta velocidad (`rg`, `grep -rn`) buscando nombres de funciones o tipos puntuales, sin abrir archivos enteros para explorar.
-* **Circuit Breaker (Freno Anti-Bucle):** Si tras implementar un cambio un test o `npx tsc --noEmit` falla **2 veces consecutivas**, la ejecución se DETIENE de inmediato. Prohibido probar parches por fuerza bruta.
+* **Circuit Breaker (Freno Anti-Bucle):** Si tras implementar un cambio en Fase Verde un test o `npx tsc --noEmit` falla **N veces consecutivas** (default `2`, refactor legacy `3-4`), la ejecución se DETIENE de inmediato. El fallo funcional esperado de la Fase Roja inicial queda excluido por contrato. Prohibido probar parches por fuerza bruta.
 * **Límites Inalterables:**
   * Prohibido commitear en `main` (siempre ramas `feature/` o `bugfix/`).
   * Prohibido instalar paquetes en `package.json` sin autorización expresa.

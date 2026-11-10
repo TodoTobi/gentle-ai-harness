@@ -2,12 +2,14 @@
 
 Antes de autorizar el cierre de esta rama o la creación del Pull Request, ejecutá una auditoría determinista e integral sobre todo el árbol de trabajo.
 
-### 1. Auditoría Integral del Estado de Git (Three-Way Diff Inspection)
-Ejecutá los siguientes tres comandos para no dejar cambios huérfanos o archivos no trackeados fuera del análisis:
+### 1. Auditoría Integral del Estado de Git (Four-Way Inspection)
+Ejecutá los siguientes cuatro comandos para no dejar cambios huérfanos, modificaciones sin stagear o archivos no trackeados fuera del análisis:
 1. `git status --porcelain`: inspeccioná cambios pendientes y archivos sin trackear (`??`). Si existen archivos residuales, temporales o fuera de `WRITE_SCOPE`, **DETENÉ EL GATEKEEPER** de inmediato:
    > `[GATEKEEPER BLOCKED] Se detectaron archivos no autorizados o residuales en el árbol de trabajo: [listar]`
-2. `git diff --cached`: auditá los cambios preparados para commit.
-3. `git diff [BASE_COMMIT_SHA] HEAD` (o `git diff main...HEAD` si no se dispone de SHA): auditá el diff total acumulado en la rama contra el commit base del paquete.
+   - Para archivos nuevos (`??`) autorizados expresamente en el paquete, leé e inspeccioná su contenido completo para descartar código muerto o secretos.
+2. `git diff`: auditá las modificaciones locales del árbol de trabajo que aún no fueron agregadas a staging.
+3. `git diff --cached`: auditá los cambios preparados en staging listos para commit.
+4. `git diff [BASE_COMMIT_SHA] HEAD` (o `git diff main...HEAD` si no se dispone de SHA): auditá el diff total acumulado en la rama contra el commit base del paquete.
 
 ### 2. Checklist de Seguridad, Contratos y Limpieza:
 - **Respeto Estricto de Scopes:** ¿Todos los archivos modificados pertenecen a `WRITE_SCOPE`? Prohibido autorizar PRs con cambios accidentales en archivos fuera de cerco.

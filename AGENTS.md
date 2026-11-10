@@ -35,15 +35,15 @@
 ---
 
 ## 2. Arquitectura por Perfil de Proyecto
-El perfil se detecta automáticamente en `@init` y condiciona las reglas de capas:
+El perfil se detecta en `@init` y condiciona las reglas de capas (el umbral de 10 archivos es una heurística inicial; la criticidad de dominio —pagos, auth, persistencia crítica— o la indicación expresa del usuario elevan el perfil a `production`):
 
-**Perfil `production` (proyectos con > 10 archivos de lógica):** 4 capas estrictamente desacopladas y obligatorias:
+**Perfil `production` (sistemas críticos o con > 10 archivos de lógica):** 4 capas estrictamente desacopladas y obligatorias:
 1. **Capa UI / Vista:** Componentes visuales puros. Prohibido incluir llamadas HTTP directas o lógica de negocio compleja.
 2. **Capa de Hooks / Estado:** Manejo de estado local/global, sockets o caché de consultas (React Query, Zustand, etc.).
 3. **Capa de Red / Servicios / API:** Clientes HTTP, controladores REST/WebSockets, servicios de dominio, validadores (Zod) y DTOs.
 4. **Capa de Datos / Persistencia:** Modelos ORM/SQL, repositorios y migraciones explícitas.
 
-**Perfil `mvp` (proyectos con ≤ 10 archivos de lógica):** capas 1-2 pueden colapsar; capas 3-4 pueden unificarse en un service plano. Se gradúa a `production` automáticamente al superar el umbral o por declaración explícita del usuario (`@perfil production`).
+**Perfil `mvp` (prototipos no críticos con ≤ 10 archivos de lógica):** capas 1-2 pueden colapsar; capas 3-4 pueden unificarse en un service plano. Se gradúa a `production` automáticamente al superar el umbral, al incorporar módulos críticos o por declaración explícita del usuario (`@perfil production`).
 
 **Adaptabilidad por paradigma:** En proyectos backend puro (NestJS, FastAPI, Go, Rust), CLI o arquitecturas limpias/hexagonales, las 4 capas se mapean conceptualmente:
 - *Capa 1:* Adaptadores Primarios / Entrada (Controladores HTTP, Handlers CLI, Consumers de eventos).

@@ -60,11 +60,12 @@ flowchart TD
     subgraph Executor ["⚡ EXECUTION BRAIN — Surgical Runner (Gemini 3.8 Flash / Antigravity)"]
         B1 --> C1["Read AGENTS.md Scope Rules"]
         C1 --> C2["Engram MCP Memory Lookup"]
-        C2 --> C3["Red Phase: Write test & verify failure"]
+        C2 --> C3["Red Phase: Write test & verify functional failure"]
         C3 --> C4["Green Phase: Minimal single-file fix"]
-        C4 --> C5{"Empirical Validation\n(Tests + tsc --noEmit)"}
+        C4 --> C4R["Refactor Phase (Optional): Invariant cleanup"]
+        C4R --> C5{"Empirical Validation\n(Tests + tsc --noEmit)"}
         C5 -- "Pass (Green)" --> C6["@cierre & PR Gatekeeper"]
-        C5 -- "Fail >= 2 times" --> CB["🚨 CIRCUIT BREAKER TRIPPED\nImmediate Halt & Log Export"]
+        C5 -- "Fail >= N times (Green/tsc only)" --> CB["🚨 CIRCUIT BREAKER TRIPPED\nImmediate Halt & Log Export"]
     end
 
     CB -.->|"Return exact log to Architect"| A2
@@ -75,7 +76,7 @@ flowchart TD
 | **Cognitive Division** | 1 model does architecture + code | Blind agent loops | **Staff Architect (Argon) + Surgical Runner (Flash)** |
 | **Token Consumption** | Maxes out context window rapidly | High cloud consumption | **Minimalist / Anti-Token Maxing (`rg` + Engram MCP)** |
 | **Scope Boundary** | Open filesystem read/write | Containerized but unguided | **Strict Cerco de Seguridad (Whitelist files only)** |
-| **Failure Recovery** | Guesses until files are corrupted | Restarts whole workflow | **Circuit Breaker: halts after 2 consecutive failures** |
+| **Failure Recovery** | Guesses until files are corrupted | Restarts whole workflow | **Circuit Breaker: halts after N consecutive failures (excludes expected Red Phase)** |
 | **Memory Persistence** | Lost between chat sessions | Ephemeral run caches | **Permanent graph via Engram MCP** |
 | **Architectural Rigor** | Spaghetti layers | Inconsistent boundaries | **Profile-aware layered architecture (`production` / `mvp`)** |
 
@@ -83,9 +84,9 @@ flowchart TD
 
 ## 🏛️ Profile-Aware Layered Architecture
 
-The harness detects your project profile during `@init` and applies the appropriate layer rules:
+The harness calibrates your project profile during `@init` (the 10-file boundary serves as an initial heuristic; domain criticality such as authentication, payments, or critical persistence mandates `production` regardless of codebase size):
 
-**`production` profile** (projects with > 10 logic files) — strict 4-layer separation, mandatory:
+**`production` profile** (critical systems or projects with > 10 logic files) — strict 4-layer separation, mandatory:
 
 ```mermaid
 graph TD
@@ -115,7 +116,7 @@ graph TD
 3. **Network / Services / API Layer:** Domain validations (Zod), DTO transformations, endpoints, and external service contracts.
 4. **Data / Persistence Layer:** Storage schemas, transactional boundaries, and migration scripts. Zero direct UI access.
 
-**`mvp` profile** (projects with ≤ 10 logic files) — layers 1–2 may collapse into a single stateful component; layers 3–4 may unify into a flat service file. The profile auto-graduates to `production` when the threshold is exceeded or the developer explicitly runs `@perfil production`.
+**`mvp` profile** (non-critical prototypes with ≤ 10 logic files) — layers 1–2 may collapse into a single stateful component; layers 3–4 may unify into a flat service file. The profile graduates to `production` when critical domains are introduced, when file counts exceed the heuristic, or when explicitly requested via `@perfil production`.
 
 > **Known design constraint — the Human Bridge:** the Architect → Executor flow requires the developer to manually copy-paste Surgical Packets between the cloud chat and the local IDE. This is an intentional trade-off: operational control over raw automation speed. Use `@quick` for trivial changes to bypass the full ritual.
 
@@ -131,7 +132,7 @@ The harness enforces strict rules defined in [`AGENTS.md`](./AGENTS.md):
   * **Read-only scope:** contract/type files the agent may consult but never modify.
   * **Validation scope:** global commands (`tsc --noEmit`, full test suite) that run against the entire project without granting the agent modification rights outside the perimeter.
 * **Surgical Grepping:** Cross-references are tracked using targeted CLI searches (`rg`, `grep -rn`) instead of reading full files.
-* **Circuit Breaker (Anti-Loop Brake):** If any unit test or `npx tsc --noEmit` fails **twice consecutively**, execution stops instantly. Hallucination and brute-force patching are prevented by design.
+* **Circuit Breaker (Anti-Loop Brake):** If any unit test or `npx tsc --noEmit` fails **N times consecutively** during Green Phase implementation (default `2`, legacy refactor `3-4`), execution stops instantly. The expected failing test in the initial Red Phase is excluded by contract. Hallucination and brute-force patching are prevented by design.
 * **Immutable Prohibitions:**
   * No direct commits to `main` (feature/bugfix branches only).
   * No `package.json` package additions without express approval.

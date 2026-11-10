@@ -26,8 +26,8 @@ Cuando me redactes órdenes para **Gemini 3.8 Flash**, tené en cuenta que el re
 
 1. **Economía de Tokens y Engram:** consulta primero el servidor MCP de **Engram** antes de explorar. Usa `rg` / `grep -rn` para búsquedas puntuales y tiene prohibido leer archivos fuera del Cerco de Seguridad.
 2. **Arquitectura por Perfil y Paradigma** (declarado en `@init`):
-   - **Perfil `production` (default):** 4 capas desacopladas obligatorias. Adaptable según stack (frontend: UI, Estado, Red, Datos; backend/Hexagonal: Adaptadores Primarios, Aplicación, Dominio, Infraestructura/Secundarios). Invariante: dependencias siempre hacia adentro.
-   - **Perfil `mvp`:** capas 1 y 2 pueden colapsar en un único componente con estado local; capas 3 y 4 pueden unificarse en un service file plano. Se prioriza velocidad de iteración sobre separación estricta. El perfil `mvp` se gradúa automáticamente a `production` cuando el proyecto supere los 10 archivos de lógica de negocio o el usuario lo declare explícitamente.
+   - **Perfil `production` (default):** 4 capas desacopladas obligatorias. Aplica a sistemas críticos (auth, pagos, persistencia) o con > 10 archivos de lógica. Adaptable según stack (frontend: UI, Estado, Red, Datos; backend/Hexagonal: Adaptadores Primarios, Aplicación, Dominio, Infraestructura/Secundarios). Invariante: dependencias siempre hacia adentro.
+   - **Perfil `mvp`:** prototipos no críticos con ≤ 10 archivos. Capas 1 y 2 pueden colapsar en un único componente con estado local; capas 3 y 4 pueden unificarse en un service file plano. Se prioriza velocidad de iteración sobre separación estricta. Se gradúa a `production` al incorporar módulos críticos, superar los 10 archivos o por declaración explícita del usuario (`@perfil production`).
 3. **Circuit Breaker (Freno Anti-Bucle):** si durante la Fase Verde (Green) o verificación de tipos un test o `npx tsc --noEmit` falla **N veces consecutivas** (N = `circuit_breaker_threshold` del Paquete, default `2`), Flash detiene su ejecución automáticamente y me devuelve el log de error para que te lo traiga a vos. **El fallo esperado inicial de la Fase Roja (Paso 1) NUNCA computa contra el Circuit Breaker.** Para `@refactor` sobre código legacy, Argon puede elevar el threshold a `3` o `4` en el paquete.
 4. **Restricciones Inalterables:** prohibido trabajar en `main`, instalar paquetes en `package.json` sin permiso, tocar `.env`, borrar archivos o refactorizar código fuera del cerco.
 
@@ -134,14 +134,14 @@ execution_report:
   task_title: "[Título de la tarea / Paso X de Y]"
   status: "[SUCCESS | CIRCUIT_BREAKER_HALTED | EXPANSION_REQUESTED | EXPANSION_REJECTED | PACKAGE_REJECTED]"
   rejection_reason: "[Completar solo si status es PACKAGE_REJECTED o EXPANSION_REJECTED]"
-  refactor_phase: "[APPLIED | REFACTOR_SKIPPED]"
+  refactor_phase: "[APPLIED | REFACTOR_SKIPPED | NOT_RUN]"
   files_modified:
     - "[ruta/archivo1.ts]"
   tests:
-    failing_reproduced: "[PASS | FAIL]"
-    minimal_fix_pass: "[PASS | FAIL]"
-    smoke_suite: "[PASS | FAIL | SKIPPED]"
-  typecheck: "[PASS | FAIL]"
+    failing_reproduced: "[PASS | FAIL | NOT_RUN]"
+    minimal_fix_pass: "[PASS | FAIL | NOT_RUN]"
+    smoke_suite: "[PASS | FAIL | SKIPPED | NOT_RUN]"
+  typecheck: "[PASS | FAIL | NOT_RUN]"
   circuit_breaker_attempts: [N]
   commit_sha: "[resultado de git rev-parse HEAD]"
   engram_synced: "[true | false | PENDING_SYNC]"

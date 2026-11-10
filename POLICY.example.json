@@ -3,7 +3,7 @@
   "version": "2.0.0",
   "description": "Especificación declarativa de políticas de ejecución, límites de alcance y gobernanza para agentes. Define la jerarquía de precedencia y reglas adaptables a múltiples stacks tecnológicos.",
   "precedence_hierarchy": [
-    "1. ABSOLUTE_FORBIDDEN: Prohibiciones duras de seguridad innegociables (secretos, .env, .git, tokens). Nunca sobreescribibles.",
+    "1. ABSOLUTE_FORBIDDEN: Prohibiciones duras de seguridad innegociables (secretos, .env, .git, tokens, commits directos a main). Nunca sobreescribibles por ningún agente o paquete.",
     "2. HUMAN_EXPLICIT_APPROVAL: Decisiones y autorizaciones otorgadas expresamente por el desarrollador en tiempo real.",
     "3. SURGICAL_PACKET_CONTRACT: Alcance y contratos definidos en el Paquete Quirófano por el Staff Architect para la tarea actual.",
     "4. PROJECT_DEFAULT_POLICY: Valores y límites por defecto declarados en este archivo de configuración.",
@@ -48,11 +48,15 @@
         "halt_on_consecutive_failures": true
       }
     },
+    "absolute_forbidden_actions": [
+      "direct_commit_to_main",
+      "reading_or_modifying_env_secrets",
+      "force_push_to_remote"
+    ],
     "human_approval_required": [
       "database_destructive_migration",
       "package_dependency_addition",
       "env_file_modification",
-      "direct_commit_to_main",
       "scope_expansion_beyond_packet"
     ],
     "allowed_commands_by_stack": {

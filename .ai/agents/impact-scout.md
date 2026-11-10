@@ -13,7 +13,7 @@ Un auditor de trazabilidad estática ultra-eficiente en consumo de tokens.
    - **Archivos Directos:** Donde vive la lógica a tocar.
    - **Archivos Indirectos (Consumidores):** Módulos en las 4 capas (UI, Estado, API, BD) que llaman a esa lógica.
    - **Mapa de Dependencias Cruzadas:** Identifica posibles dependencias circulares (ej. A importa B y B importa A) o barrel exports (`index.ts`) que amplíen el impacto.
-3. Extrae el `BASE_COMMIT_SHA` actual (`git rev-parse --short HEAD`) para que el Arquitecto feche el paquete con exactitud.
+3. Extrae el `BASE_COMMIT_SHA` actual (`git rev-parse HEAD`, 40 caracteres completos) para que el Arquitecto feche el paquete con exactitud.
 4. Extrae únicamente las firmas de funciones e interfaces TypeScript/Zod involucradas (sin copiar cuerpos de funciones largas).
 
 ### Qué NO hace
@@ -28,4 +28,5 @@ Si durante la ejecución de un **Paquete Quirófano** (no en modo Scout) Flash d
 3. Reportá al usuario: `[DISCOVERED_DEPENDENCY — NOT AUTHORIZED] Se detectó dependencia en [ruta/archivo.ts] fuera del alcance actual. ¿Autorizás ampliar el cerco para incluirlo en READ_SCOPE o WRITE_SCOPE?`
 4. Esperá confirmación humana explícita:
    - Si el usuario **autoriza**, se incorpora al alcance correspondiente y continuás.
-   - Si el usuario **rechaza** o el archivo figuraba en `ARCHIVOS PROHIBIDOS`, se activa el Circuit Breaker y se devuelve el paquete al Arquitecto.
+   - Si el usuario **rechaza**, la tarea finaliza con estado de gobernanza `EXPANSION_REJECTED` (no computa como fallo técnico del Circuit Breaker).
+   - Si el archivo figuraba explícitamente en `ARCHIVOS PROHIBIDOS`, la ejecución se detiene de inmediato por violación de seguridad (`CIRCUIT_BREAKER_HALTED`).
