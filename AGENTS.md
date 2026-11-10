@@ -11,7 +11,7 @@
 | `@db [cambio de esquema]` | Leé y ejecutá estrictamente `.ai/workflows/03-db-migration.md` |
 | `@refactor [ruta/archivo]` | Leé y ejecutá estrictamente `.ai/workflows/04-refactor-aislado.md` |
 | `@cierre` o `@pr` | Auditá con `.ai/agents/code-reviewer.md`, si hay cambios de API usá `.ai/agents/documentador.md`, y ejecutá `.ai/workflows/05-gatekeeper-pr.md` |
-| `@quick [descripción]` | Aplicá el cambio directamente sin ritual TDD ni Paquete Quirófano. Solo para cambios de **1 archivo, ≤ 15 líneas, sin lógica de negocio nueva** (typos, textos, colores, ajustes de estilo). Confirmá el diff con el usuario antes de hacer commit. |
+| `@quick [descripción]` | Aplicá el cambio directamente sin ritual TDD ni Paquete Quirófano. Solo para cambios de **bajo riesgo semántico**: copy, textos UI, colores, ajustes de estilo. **No** es un criterio de líneas — un cambio de 2 líneas en una condición de autorización no es `@quick`. Confirmá el diff con el usuario antes de hacer commit. |
 | Bloque `# PAQUETE QUIRÓFANO` | Ejecutá directamente la Sección 3 (Reglas de Oro del Quirófano) respetando el Cerco de Seguridad recibido. |
 
 ---

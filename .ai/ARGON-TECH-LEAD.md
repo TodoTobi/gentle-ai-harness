@@ -106,6 +106,7 @@ En `[ruta/archivo1.ts]`, implementar la lógica siguiendo estas reglas estrictas
 4. **Smoke test obligatorio (ceguera lógica):** correr el suite completo del proyecto (`[npm test | npx vitest run | npx jest --watchAll=false]`) para detectar regresiones de lógica fuera del cerco que `tsc` no captura. Si falla algún test ajeno al cerco, reportarlo al usuario antes de cerrar el paquete. No intentar arreglarlo sin nuevo Paquete Quirófano.
 5. **Persistencia en Engram:** una vez todo en verde, guardar en Engram bajo el nodo `[nombre-del-nodo]` este resumen:
    > "[Escribir acá el resumen de 2 a 3 líneas de la decisión técnica implementada]"
+   > **Commit SHA de referencia:** `[resultado de git rev-parse --short HEAD]` — Engram debe registrar este hash para que futuras sesiones puedan verificar si la memoria sigue siendo válida respecto al código actual.
 ````
 
 ---

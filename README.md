@@ -8,7 +8,7 @@
   <a href="./README.es.md"><img src="https://img.shields.io/badge/Documentaci%C3%B3n-Espa%C3%B1ol-orange?style=flat-square" alt="Español"></a>
 </p>
 
-[![Architecture](https://img.shields.io/badge/Architecture-4--Layer_Decoupled-blueviolet?style=flat-square)](#-strict-4-layer-decoupled-architecture)
+[![Architecture](https://img.shields.io/badge/Architecture-Profile--Aware_Layers-blueviolet?style=flat-square)](#-profile-aware-layered-architecture)
 [![Dual Brain](https://img.shields.io/badge/Orchestration-Argon_%2B_Flash-10B981?style=flat-square)](#-the-one-man-engineering-team-pattern)
 [![Memory MCP](https://img.shields.io/badge/Memory-Engram_MCP-FF6F00?style=flat-square)](https://github.com/gentle-ai)
 [![Methodology](https://img.shields.io/badge/Methodology-Surgical_TDD-ED1C24?style=flat-square)](#-the-surgical-execution-protocol)
@@ -77,13 +77,15 @@ flowchart TD
 | **Scope Boundary** | Open filesystem read/write | Containerized but unguided | **Strict Cerco de Seguridad (Whitelist files only)** |
 | **Failure Recovery** | Guesses until files are corrupted | Restarts whole workflow | **Circuit Breaker: halts after 2 consecutive failures** |
 | **Memory Persistence** | Lost between chat sessions | Ephemeral run caches | **Permanent graph via Engram MCP** |
-| **Architectural Rigor** | Spaghetti layers | Inconsistent boundaries | **Enforced 4-Layer Decoupled Architecture** |
+| **Architectural Rigor** | Spaghetti layers | Inconsistent boundaries | **Profile-aware layered architecture (`production` / `mvp`)** |
 
 ---
 
-## 🏛️ Strict 4-Layer Decoupled Architecture
+## 🏛️ Profile-Aware Layered Architecture
 
-Every file and operation within the harness strictly belongs to one of four isolated layers. Cross-layer violations are rejected at review time:
+The harness detects your project profile during `@init` and applies the appropriate layer rules:
+
+**`production` profile** (projects with > 10 logic files) — strict 4-layer separation, mandatory:
 
 ```mermaid
 graph TD
@@ -113,6 +115,10 @@ graph TD
 3. **Network / Services / API Layer:** Domain validations (Zod), DTO transformations, endpoints, and external service contracts.
 4. **Data / Persistence Layer:** Storage schemas, transactional boundaries, and migration scripts. Zero direct UI access.
 
+**`mvp` profile** (projects with ≤ 10 logic files) — layers 1–2 may collapse into a single stateful component; layers 3–4 may unify into a flat service file. The profile auto-graduates to `production` when the threshold is exceeded or the developer explicitly runs `@perfil production`.
+
+> **Known design constraint — the Human Bridge:** the Architect → Executor flow requires the developer to manually copy-paste Surgical Packets between the cloud chat and the local IDE. This is an intentional trade-off: operational control over raw automation speed. Use `@quick` for trivial changes to bypass the full ritual.
+
 ---
 
 ## 🛡️ Anti-Token Maxing & Safety Fencing
@@ -120,7 +126,10 @@ graph TD
 The harness enforces strict rules defined in [`AGENTS.md`](./AGENTS.md):
 
 * **Memory First (`Engram MCP`):** Queries persistent project graph memory before scanning the repository.
-* **Security Perimeter (`Cerco de Seguridad`):** The local agent is **strictly prohibited** from reading or modifying files outside the declared `ARCHIVOS DENTRO DEL ALCANCE` (Scope Whitelist).
+* **Security Perimeter (`Cerco de Seguridad`):** The local agent operates under three distinct scopes — never conflated:
+  * **Modification scope:** files the agent may read and write (declared in the Surgical Packet).
+  * **Read-only scope:** contract/type files the agent may consult but never modify.
+  * **Validation scope:** global commands (`tsc --noEmit`, full test suite) that run against the entire project without granting the agent modification rights outside the perimeter.
 * **Surgical Grepping:** Cross-references are tracked using targeted CLI searches (`rg`, `grep -rn`) instead of reading full files.
 * **Circuit Breaker (Anti-Loop Brake):** If any unit test or `npx tsc --noEmit` fails **twice consecutively**, execution stops instantly. Hallucination and brute-force patching are prevented by design.
 * **Immutable Prohibitions:**
@@ -143,6 +152,7 @@ The agent operates on a **Lazy-Loading Protocol**. Rule files inside `.ai/` are 
 | `@db [schema change]` | `03-db-migration.md` | Generates safe, reversible zero-downtime DB migration steps. |
 | `@refactor [path]` | `04-refactor-aislado.md` | Isolates and refactors a module while preserving external invariance. |
 | `@cierre` or `@pr` | `code-reviewer.md` + `05-gatekeeper-pr.md` | Audits git diff, runs global regression checks, and generates the PR. |
+| `@quick [desc]` | Direct minimal fix | For **semantically low-risk** changes only (copy, style, labels). Skips TDD ritual. The agent confirms the diff before committing. |
 | `# PAQUETE QUIRÓFANO` | Section 3 Golden Rules | Automatically activates the surgical TDD execution mode. |
 
 ---

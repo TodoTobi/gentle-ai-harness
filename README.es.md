@@ -8,7 +8,7 @@
   <a href="./README.es.md"><img src="https://img.shields.io/badge/Documentaci%C3%B3n-Espa%C3%B1ol-orange?style=flat-square" alt="Español"></a>
 </p>
 
-[![Arquitectura](https://img.shields.io/badge/Arquitectura-4--Capas_Desacopladas-blueviolet?style=flat-square)](#-arquitectura-estricta-en-4-capas-desacopladas)
+[![Arquitectura](https://img.shields.io/badge/Arquitectura-Capas_por_Perfil-blueviolet?style=flat-square)](#-arquitectura-por-perfil-de-proyecto)
 [![Doble Cerebro](https://img.shields.io/badge/Orquestaci%C3%B3n-Argon_%2B_Flash-10B981?style=flat-square)](#-el-patr%C3%B3n-one-man-engineering-team)
 [![Memoria MCP](https://img.shields.io/badge/Memoria-Engram_MCP-FF6F00?style=flat-square)](https://github.com/gentle-ai)
 [![Metodología](https://img.shields.io/badge/Metodolog%C3%ADa-TDD_Quir%C3%BArgico-ED1C24?style=flat-square)](#-protocolo-de-ejecuci%C3%B3n-quir%C3%BArgica)
@@ -77,13 +77,15 @@ flowchart TD
 | **Límite de Alcance** | Lectura/escritura libre de archivos | Contenedor sin cerco estricto | **Cerco de Seguridad estricto (Whitelist única)** |
 | **Freno Anti-Bucle** | Adivina parches hasta romper la rama | Reinicia todo el pipeline | **Circuit Breaker: frena tras 2 fallos consecutivos** |
 | **Memoria Persistente** | Se pierde al cerrar el chat | Caché volátil de sesión | **Grafo persistente con Engram MCP** |
-| **Rigor de Capas** | Código espagueti | Límites inconsistentes | **Arquitectura en 4 Capas Desacopladas obligatoria** |
+| **Rigor de Capas** | Código espagueti | Límites inconsistentes | **Arquitectura por perfil de proyecto (`production` / `mvp`)** |
 
 ---
 
-## 🏛️ Arquitectura Estricta en 4 Capas Desacopladas
+## 🏛️ Arquitectura por Perfil de Proyecto
 
-Cada archivo y cambio dentro del harness pertenece obligatoriamente a una de cuatro capas aisladas. Las violaciones entre capas se rechazan automáticamente:
+El perfil se detecta automáticamente en `@init` y condiciona las reglas de capas:
+
+**Perfil `production`** (proyectos con > 10 archivos de lógica) — separación estricta en 4 capas, obligatoria:
 
 ```mermaid
 graph TD
@@ -113,6 +115,10 @@ graph TD
 3. **Capa 3 (Red / Servicios / API):** Clientes HTTP, endpoints, servicios de dominio, esquemas Zod y DTOs.
 4. **Capa 4 (Datos / Persistencia):** Modelos ORM/SQL, repositorios y migraciones explícitas.
 
+**Perfil `mvp`** (proyectos con ≤ 10 archivos de lógica) — las capas 1-2 pueden colapsar en un componente con estado local; las capas 3-4 pueden unificarse en un service plano. Se gradúa a `production` automáticamente al superar el umbral o por declaración explícita (`@perfil production`).
+
+> **Limitación conocida — el Puente Humano:** el flujo Arquitecto → Ejecutor requiere que el desarrollador copie y pegue los Paquetes Quirófano manualmente. Es un trade-off consciente: control quirúrgico sobre velocidad bruta. Para cambios triviales, usá `@quick` para saltear el ritual.
+
 ---
 
 ## 🛡️ Anti-Token Maxing y Cerco de Seguridad
@@ -120,7 +126,10 @@ graph TD
 El harness impone las directivas estrictas detalladas en [`AGENTS.md`](./AGENTS.md):
 
 * **Memoria Primero (`Engram MCP`):** Consulta el grafo arquitectónico persistente antes de tocar el sistema de archivos.
-* **Cerco de Seguridad Estricto:** El agente local tiene **terminantemente prohibido** leer o editar archivos que no figuren en la sección `ARCHIVOS DENTRO DEL ALCANCE`.
+* **Cerco de Seguridad Estricto:** El agente local opera bajo tres scopes distintos, nunca mezclados:
+  * **Scope de modificación:** archivos que el agente puede leer y escribir (declarados en el Paquete Quirófano).
+  * **Scope de solo lectura:** archivos de contratos/tipos que puede consultar pero nunca modificar.
+  * **Scope de validación:** comandos globales (`tsc --noEmit`, suite completa de tests) que se ejecutan contra todo el proyecto sin otorgar al agente permisos de modificación fuera del cerco.
 * **Búsqueda Quirúrgica:** Rastreo de llamadas mediante herramientas de alta velocidad (`rg`, `grep -rn`) buscando nombres de funciones o tipos puntuales, sin abrir archivos enteros para explorar.
 * **Circuit Breaker (Freno Anti-Bucle):** Si tras implementar un cambio un test o `npx tsc --noEmit` falla **2 veces consecutivas**, la ejecución se DETIENE de inmediato. Prohibido probar parches por fuerza bruta.
 * **Límites Inalterables:**
@@ -143,6 +152,7 @@ El harness utiliza **Lazy Loading de Prompts**: los archivos de `.ai/` nunca se 
 | `@db [cambio]` | `03-db-migration.md` | Extrae esquemas y planifica migraciones reversibles zero-downtime. |
 | `@refactor [ruta]` | `04-refactor-aislado.md` | Refactoriza un módulo garantizando 100% de invarianza externa. |
 | `@cierre` o `@pr` | `code-reviewer.md` + `05-gatekeeper-pr.md` | Audita `git diff`, corre regresión global y genera el Pull Request. |
+| `@quick [descripción]` | Fix directo mínimo | Solo para cambios de **bajo riesgo semántico** (copy, estilos, labels). Saltea el ritual TDD. El agente confirma el diff antes de commitear. |
 | `# PAQUETE QUIRÓFANO` | Sección 3 Reglas de Oro | Activa la ejecución TDD quirúrgica bajo el cerco recibido. |
 
 ---
