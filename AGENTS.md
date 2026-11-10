@@ -20,7 +20,7 @@
 - **Memoria Primero (Engram):** Antes de explorar el repositorio, consultá el servidor MCP de **Engram** para recuperar el contexto arquitectónico del módulo.
 - **Respeto Absoluto al Cerco de Seguridad:** Solo tenés permitido leer y modificar los archivos listados en `ARCHIVOS DENTRO DEL ALCANCE` (o `ARCHIVOS PERMITIDOS`) del Paquete de Ejecución actual.
 - **Búsqueda Quirúrgica:** Para rastrear referencias cruzadas (Fase 3), usá comandos precisos (`rg`, `grep -rn`) buscando nombres de funciones o tipos específicos. Prohibido leer archivos completos solo para explorar.
-- **Circuit Breaker (Freno Anti-Bucle):** Si tras implementar un cambio, un test o `tsc --noEmit` falla **N veces consecutivas** (N = `circuit_breaker_threshold` del Paquete, default `2`), DETENÉ la ejecución inmediatamente, mostrá el log exacto del error y esperá instrucciones humanas. Prohibido adivinar o probar parches por fuerza bruta.
+- **Circuit Breaker (Freno Anti-Bucle):** Si tras implementar un cambio en Fase Verde (Green), un test o `tsc --noEmit` falla **N veces consecutivas** (N = `circuit_breaker_threshold` del Paquete, default `2`), DETENÉ la ejecución inmediatamente, mostrá el log exacto del error y esperá instrucciones humanas. Prohibido adivinar o probar parches por fuerza bruta. **Importante:** El fallo inicial esperado en la Fase Roja (Red Phase) de TDD NO contabiliza como fallo del Circuit Breaker; solo cuentan los fallos producidos durante la implementación o validación de tipos.
 - **Principios de Código:** Aplicá estrictamente KISS, YAGNI y TDD (Red -> Green -> Refactor). Cero explicaciones largas al finalizar; reportá estado de tests y cambios en viñetas de 1 línea.
 
 ---
@@ -35,6 +35,13 @@ El perfil se detecta automáticamente en `@init` y condiciona las reglas de capa
 4. **Capa de Datos / Persistencia:** Modelos ORM/SQL, repositorios y migraciones explícitas.
 
 **Perfil `mvp` (proyectos con ≤ 10 archivos de lógica):** capas 1-2 pueden colapsar; capas 3-4 pueden unificarse en un service plano. Se gradúa a `production` automáticamente al superar el umbral o por declaración explícita del usuario (`@perfil production`).
+
+**Adaptabilidad por paradigma:** En proyectos backend puro (NestJS, FastAPI, Go, Rust), CLI o arquitecturas limpias/hexagonales, las 4 capas se mapean conceptualmente:
+- *Capa 1:* Adaptadores Primarios / Entrada (Controladores HTTP, Handlers CLI, Consumers de eventos).
+- *Capa 2:* Casos de Uso / Orquestación (Application Services, Comandos, Queries).
+- *Capa 3:* Dominio Puro (Entidades, Value Objects, Reglas de negocio e Interfaces/Puertos).
+- *Capa 4:* Adaptadores Secundarios / Salida (Repositorios SQL/NoSQL, Clientes externos, Adaptadores de infraestructura).
+*Regla de Oro Inmutable:* Las dependencias van estrictamente hacia adentro. Las capas internas nunca importan ni dependen de las externas.
 
 > **Limitación conocida del bridge humano:** el flujo Arquitecto (web) → Ejecutor (local) requiere que el desarrollador copie y pegue los Paquetes Quirófano manualmente. Esto es un trade-off consciente de diseño: se sacrifica velocidad de flujo para ganar control quirúrgico. Para tareas triviales, usá `@quick` para saltear el ritual.
 

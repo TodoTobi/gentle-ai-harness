@@ -216,6 +216,7 @@ gentle-ai-harness/
 │       └── 05-gatekeeper-pr.md  # Gatekeeper final: auditoría, regresión y PR
 ├── AGENTS.md                    # Router principal y contrato operativo del ejecutor
 ├── SPEC.md                      # Plantilla de Project Charter y Criterios BDD
+├── POLICY.example.json          # Contrato de referencia para motores de seguridad en runtime
 ├── .gitignore                   # Exclusiones seguras de archivos y secretos
 └── README.md                    # Documentación principal en inglés
 ```

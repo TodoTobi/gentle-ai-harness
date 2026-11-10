@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Gentle AI Harness — Runtime Security Policy Contract",
+  "version": "1.0.0",
+  "description": "Especificación de referencia para motores de ejecución (Policy Engine) y sandboxes de agentes. Define límites duros de acceso al sistema de archivos, comandos y aprobaciones humanas.",
+  "policy": {
+    "profile": "production",
+    "architecture_pattern": "hexagonal_or_layered",
+    "scopes": {
+      "modification_allowlist": [
+        "src/**/*.ts",
+        "src/**/*.tsx",
+        "tests/**/*.ts"
+      ],
+      "readonly_allowlist": [
+        "src/types/**/*.ts",
+        "src/interfaces/**/*.ts",
+        "package.json",
+        "tsconfig.json"
+      ],
+      "forbidden_paths": [
+        ".env*",
+        "**/*secret*",
+        "**/*credential*",
+        ".git/**",
+        "node_modules/**",
+        "dist/**",
+        "build/**"
+      ]
+    },
+    "execution_limits": {
+      "max_files_modified_per_packet": 3,
+      "max_diff_lines": 300,
+      "circuit_breaker": {
+        "threshold": 2,
+        "legacy_refactor_threshold": 4,
+        "exclude_expected_red_phase": true,
+        "halt_on_consecutive_failures": true
+      }
+    },
+    "human_approval_required": [
+      "database_destructive_migration",
+      "package_json_dependency_addition",
+      "env_file_modification",
+      "direct_commit_to_main",
+      "scope_expansion_beyond_packet"
+    ],
+    "allowed_commands": {
+      "test_runners": [
+        "npm test",
+        "npx vitest run",
+        "npx jest --watchAll=false"
+      ],
+      "typecheck": [
+        "npx tsc --noEmit"
+      ],
+      "search_tools": [
+        "rg",
+        "grep -rn"
+      ],
+      "static_analysis": [
+        "npx eslint",
+        "npm audit",
+        "semgrep"
+      ]
+    },
+    "memory_engine": {
+      "provider": "engram_mcp",
+      "enforce_commit_sha": true,
+      "freshness_validation_on_init": true,
+      "fallback_on_offline": "degraded_mode"
+    },
+    "observability": {
+      "require_execution_report": true,
+      "format": "yaml"
+    }
+  }
+}

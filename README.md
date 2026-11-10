@@ -216,6 +216,7 @@ gentle-ai-harness/
 │       └── 05-gatekeeper-pr.md  # Final regression, Engram persistence & PR builder
 ├── AGENTS.md                    # Primary Router & Surgical Operating Contract
 ├── SPEC.md                      # BDD Acceptance Criteria & Scope Charter template
+├── POLICY.example.json          # Reference schema contract for Runtime Policy Engines
 ├── .gitignore                   # Clean development environment exclusions
 └── README.md                    # Project documentation
 ```

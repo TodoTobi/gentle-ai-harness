@@ -25,10 +25,10 @@ Cuando me redactes órdenes para **Gemini 3.8 Flash**, tené en cuenta que el re
 3.8 Flash obedece estrictamente estas reglas en todo momento:
 
 1. **Economía de Tokens y Engram:** consulta primero el servidor MCP de **Engram** antes de explorar. Usa `rg` / `grep -rn` para búsquedas puntuales y tiene prohibido leer archivos fuera del Cerco de Seguridad.
-2. **Arquitectura por Perfil de Proyecto** (declarado en `@init`):
-   - **Perfil `production` (default):** 4 capas desacopladas obligatorias — UI/Vista, Hooks/Estado, Red/Servicios/API, Datos/Persistencia. Ninguna capa puede mezclar responsabilidades.
+2. **Arquitectura por Perfil y Paradigma** (declarado en `@init`):
+   - **Perfil `production` (default):** 4 capas desacopladas obligatorias. Adaptable según stack (frontend: UI, Estado, Red, Datos; backend/Hexagonal: Adaptadores Primarios, Aplicación, Dominio, Infraestructura/Secundarios). Invariante: dependencias siempre hacia adentro.
    - **Perfil `mvp`:** capas 1 y 2 pueden colapsar en un único componente con estado local; capas 3 y 4 pueden unificarse en un service file plano. Se prioriza velocidad de iteración sobre separación estricta. El perfil `mvp` se gradúa automáticamente a `production` cuando el proyecto supere los 10 archivos de lógica de negocio o el usuario lo declare explícitamente.
-3. **Circuit Breaker (Freno Anti-Bucle):** si un test o `npx tsc --noEmit` falla **N veces consecutivas** (N = `circuit_breaker_threshold` del Paquete, default `2`), Flash detiene su ejecución automáticamente y me devuelve el log de error para que te lo traiga a vos. Para `@refactor` sobre código legacy, Argon puede elevar el threshold a `3` o `4` en el paquete.
+3. **Circuit Breaker (Freno Anti-Bucle):** si durante la Fase Verde (Green) o verificación de tipos un test o `npx tsc --noEmit` falla **N veces consecutivas** (N = `circuit_breaker_threshold` del Paquete, default `2`), Flash detiene su ejecución automáticamente y me devuelve el log de error para que te lo traiga a vos. **El fallo esperado inicial de la Fase Roja (Paso 1) NUNCA computa contra el Circuit Breaker.** Para `@refactor` sobre código legacy, Argon puede elevar el threshold a `3` o `4` en el paquete.
 4. **Restricciones Inalterables:** prohibido trabajar en `main`, instalar paquetes en `package.json` sin permiso, tocar `.env`, borrar archivos o refactorizar código fuera del cerco.
 
 ### B. Comandos y Workflows Locales (`.ai/workflows/` y `.ai/agents/`)
@@ -102,11 +102,30 @@ En `[ruta/archivo1.ts]`, implementar la lógica siguiendo estas reglas estrictas
 ### Paso 3: Validación Empírica, Circuit Breaker y Engram
 1. Volver a correr `[comando exacto de test]` hasta que dé VERDE.
 2. Ejecutar verificación global de tipos: `npx tsc --noEmit`.
-3. **REGLA CIRCUIT BREAKER:** si el test o `tsc` falla [circuit_breaker_threshold] veces consecutivas, DETENER ejecución inmediatamente y devolver el log del error sin intentar nuevos parches.
+3. **REGLA CIRCUIT BREAKER:** si tras implementar la lógica el test o `tsc` falla [circuit_breaker_threshold] veces consecutivas (excluyendo el fallo inicial esperado del Paso 1/Fase Roja), DETENER ejecución inmediatamente y devolver el log del error sin intentar nuevos parches.
 4. **Smoke test obligatorio (ceguera lógica):** correr el suite completo del proyecto (`[npm test | npx vitest run | npx jest --watchAll=false]`) para detectar regresiones de lógica fuera del cerco que `tsc` no captura. Si falla algún test ajeno al cerco, reportarlo al usuario antes de cerrar el paquete. No intentar arreglarlo sin nuevo Paquete Quirófano.
 5. **Persistencia en Engram:** una vez todo en verde, guardar en Engram bajo el nodo `[nombre-del-nodo]` este resumen:
    > "[Escribir acá el resumen de 2 a 3 líneas de la decisión técnica implementada]"
    > **Commit SHA de referencia:** `[resultado de git rev-parse --short HEAD]` — Engram debe registrar este hash para que futuras sesiones puedan verificar si la memoria sigue siendo válida respecto al código actual.
+
+### Paso 4: Reporte Estructurado de Ejecución (Observabilidad)
+Al finalizar la tarea (tanto por éxito como si se dispara el Circuit Breaker), emitir este bloque YAML para auditoría:
+
+```yaml
+execution_report:
+  task_title: "[Título de la tarea / Paso X de Y]"
+  status: "[SUCCESS | CIRCUIT_BREAKER_HALTED | EXPANSION_REQUESTED]"
+  files_modified:
+    - "[ruta/archivo1.ts]"
+  tests:
+    failing_reproduced: "[PASS | FAIL]"
+    minimal_fix_pass: "[PASS | FAIL]"
+    smoke_suite: "[PASS | FAIL | SKIPPED]"
+  typecheck: "[PASS | FAIL]"
+  circuit_breaker_attempts: [N]
+  commit_sha: "[resultado de git rev-parse --short HEAD]"
+  engram_synced: "[true | false | offline]"
+```
 ````
 
 ---
